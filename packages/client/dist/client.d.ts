@@ -1,4 +1,4 @@
-import type { ChargeInput, Charge, PaginatedResult } from './types';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult } from './types';
 export declare class WooviClient {
     private appId;
     private baseUrl;
@@ -15,5 +15,12 @@ export declare class WooviClient {
         limit?: number;
         status?: string;
     }): Promise<PaginatedResult<Charge>>;
+    createCustomer(data: CustomerInput): Promise<Customer>;
+    getCustomer(idOrEmail: string): Promise<Customer>;
+    listCustomers(filters?: {
+        search?: string;
+        skip?: number;
+        limit?: number;
+    }): Promise<PaginatedResult<Customer>>;
 }
 //# sourceMappingURL=client.d.ts.map

@@ -107,5 +107,41 @@ export class WooviClient {
             },
         };
     }
+    async createCustomer(data) {
+        return await this.makeRequest('POST', '/api/v1/customer', data);
+    }
+    async getCustomer(idOrEmail) {
+        if (idOrEmail.includes('@')) {
+            // Email query
+            const email = encodeURIComponent(idOrEmail);
+            return await this.makeRequest('GET', `/api/v1/customer/?email=${email}`);
+        }
+        else {
+            // ID path param
+            const id = encodeURIComponent(idOrEmail);
+            return await this.makeRequest('GET', `/api/v1/customer/${id}`);
+        }
+    }
+    async listCustomers(filters) {
+        const skip = filters?.skip ?? 0;
+        const limit = filters?.limit ?? 10;
+        const params = new URLSearchParams({
+            skip: String(skip),
+            limit: String(limit),
+        });
+        if (filters?.search) {
+            params.set('search', filters.search);
+        }
+        const response = await this.makeRequest('GET', `/api/v1/customer/?${params.toString()}`);
+        return {
+            items: response.items || [],
+            pageInfo: response.pageInfo || {
+                skip,
+                limit,
+                totalCount: response.totalCount || 0,
+                hasNextPage: response.hasNextPage || false,
+            },
+        };
+    }
 }
 //# sourceMappingURL=client.js.map
