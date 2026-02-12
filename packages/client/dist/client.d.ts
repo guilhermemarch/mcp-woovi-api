@@ -1,4 +1,4 @@
-import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult } from './types';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types';
 export declare class WooviClient {
     private appId;
     private baseUrl;
@@ -22,5 +22,14 @@ export declare class WooviClient {
         skip?: number;
         limit?: number;
     }): Promise<PaginatedResult<Customer>>;
+    listTransactions(filters?: {
+        skip?: number;
+        limit?: number;
+        startDate?: Date;
+        endDate?: Date;
+    }): Promise<PaginatedResult<Transaction>>;
+    getBalance(accountId?: string): Promise<Balance>;
+    createRefund(chargeId: string, data: RefundInput): Promise<Refund>;
+    getRefund(refundId: string): Promise<Refund>;
 }
 //# sourceMappingURL=client.d.ts.map

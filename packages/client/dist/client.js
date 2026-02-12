@@ -143,5 +143,53 @@ export class WooviClient {
             },
         };
     }
+    async listTransactions(filters) {
+        const skip = filters?.skip ?? 0;
+        const limit = filters?.limit ?? 10;
+        const params = new URLSearchParams({
+            skip: String(skip),
+            limit: String(limit),
+        });
+        if (filters?.startDate) {
+            params.set('startDate', filters.startDate.toISOString());
+        }
+        if (filters?.endDate) {
+            params.set('endDate', filters.endDate.toISOString());
+        }
+        const response = await this.makeRequest('GET', `/api/v1/transaction/?${params.toString()}`);
+        return {
+            items: response.items || [],
+            pageInfo: response.pageInfo || {
+                skip,
+                limit,
+                totalCount: response.totalCount || 0,
+                hasNextPage: response.hasNextPage || false,
+            },
+        };
+    }
+    async getBalance(accountId) {
+        const cacheKey = `balance:${accountId || 'default'}`;
+        // Check cache first
+        const cached = this.cache.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+        // Make API request
+        const endpoint = accountId ? `/api/v1/account/${accountId}` : '/api/v1/account/';
+        const response = await this.makeRequest('GET', endpoint);
+        // Extract balance from response
+        const balance = response.balance;
+        // Cache for 60 seconds
+        this.cache.set(cacheKey, balance, 60000);
+        return balance;
+    }
+    async createRefund(chargeId, data) {
+        const encodedId = encodeURIComponent(chargeId);
+        return await this.makeRequest('POST', `/api/v1/charge/${encodedId}/refund`, data);
+    }
+    async getRefund(refundId) {
+        const encodedId = encodeURIComponent(refundId);
+        return await this.makeRequest('GET', `/api/v1/refund/${encodedId}`);
+    }
 }
 //# sourceMappingURL=client.js.map
