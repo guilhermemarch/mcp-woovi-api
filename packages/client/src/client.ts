@@ -1,4 +1,5 @@
 import { SimpleCache } from './cache';
+import type { ChargeInput, Charge, PaginatedResult } from './types';
 
 export class WooviClient {
   private appId: string;
@@ -101,5 +102,39 @@ export class WooviClient {
 
     const visiblePart = value.slice(-4);
     return '*'.repeat(7) + visiblePart;
+  }
+
+  async createCharge(data: ChargeInput): Promise<Charge> {
+    return await this.makeRequest('POST', '/api/openpix/v1/charge', data);
+  }
+
+  async getCharge(correlationID: string): Promise<Charge> {
+    const encodedID = encodeURIComponent(correlationID);
+    return await this.makeRequest('GET', `/api/v1/charge/${encodedID}`);
+  }
+
+  async listCharges(filters?: { skip?: number; limit?: number; status?: string }): Promise<PaginatedResult<Charge>> {
+    const skip = filters?.skip ?? 0;
+    const limit = filters?.limit ?? 10;
+    const params = new URLSearchParams({
+      skip: String(skip),
+      limit: String(limit),
+    });
+
+    if (filters?.status) {
+      params.set('status', filters.status);
+    }
+
+    const response = await this.makeRequest('GET', `/api/v1/charge/?${params.toString()}`);
+
+    return {
+      items: response.items || [],
+      pageInfo: response.pageInfo || {
+        skip,
+        limit,
+        totalCount: response.totalCount || 0,
+        hasNextPage: response.hasNextPage || false,
+      },
+    };
   }
 }

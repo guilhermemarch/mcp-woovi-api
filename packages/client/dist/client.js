@@ -79,5 +79,33 @@ export class WooviClient {
         const visiblePart = value.slice(-4);
         return '*'.repeat(7) + visiblePart;
     }
+    async createCharge(data) {
+        return await this.makeRequest('POST', '/api/openpix/v1/charge', data);
+    }
+    async getCharge(correlationID) {
+        const encodedID = encodeURIComponent(correlationID);
+        return await this.makeRequest('GET', `/api/v1/charge/${encodedID}`);
+    }
+    async listCharges(filters) {
+        const skip = filters?.skip ?? 0;
+        const limit = filters?.limit ?? 10;
+        const params = new URLSearchParams({
+            skip: String(skip),
+            limit: String(limit),
+        });
+        if (filters?.status) {
+            params.set('status', filters.status);
+        }
+        const response = await this.makeRequest('GET', `/api/v1/charge/?${params.toString()}`);
+        return {
+            items: response.items || [],
+            pageInfo: response.pageInfo || {
+                skip,
+                limit,
+                totalCount: response.totalCount || 0,
+                hasNextPage: response.hasNextPage || false,
+            },
+        };
+    }
 }
 //# sourceMappingURL=client.js.map
