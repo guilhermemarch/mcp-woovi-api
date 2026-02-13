@@ -1,4 +1,4 @@
-export * from './types';
-export { SimpleCache } from './cache';
-export { WooviClient } from './client';
+export * from './types.js';
+export { SimpleCache } from './cache.js';
+export { WooviClient } from './client.js';
 //# sourceMappingURL=index.d.ts.map

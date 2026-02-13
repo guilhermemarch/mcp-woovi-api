@@ -1,4 +1,4 @@
-import { SimpleCache } from './cache';
+import { SimpleCache } from './cache.js';
 export class WooviClient {
     constructor(appId, baseUrl) {
         if (!appId || appId.trim() === '') {

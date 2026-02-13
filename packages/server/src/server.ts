@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WooviClient } from '@woovi/client';
+import { registerChargeTools } from './tools/charges.js';
 
-// Validate environment
 const appId = process.env['WOOVI_APP_ID'];
 if (!appId) {
   console.error('FATAL: WOOVI_APP_ID environment variable is required');
@@ -10,10 +10,8 @@ if (!appId) {
 
 const baseUrl = process.env['WOOVI_API_URL'] || 'https://api.openpix.com.br';
 
-// Initialize Woovi API client
 export const wooviClient = new WooviClient(appId, baseUrl);
 
-// Create MCP Server instance
 export const mcpServer = new McpServer({
   name: 'woovi-mcp-server',
   version: '1.0.0',
@@ -25,4 +23,7 @@ export const mcpServer = new McpServer({
   },
 });
 
+registerChargeTools(mcpServer, wooviClient);
+
 console.error('[MCP Server] Initialized with Woovi API client');
+

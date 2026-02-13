@@ -1,4 +1,4 @@
-import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types.js';
 export declare class WooviClient {
     private appId;
     private baseUrl;

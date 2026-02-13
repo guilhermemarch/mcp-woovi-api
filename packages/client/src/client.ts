@@ -1,5 +1,5 @@
-import { SimpleCache } from './cache';
-import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types';
+import { SimpleCache } from './cache.js';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types.js';
 
 export class WooviClient {
   private appId: string;
