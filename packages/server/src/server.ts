@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WooviClient } from '@woovi/client';
 import { registerChargeTools, registerCustomerTools, registerTransactionTools, registerRefundTools } from './tools/index.js';
+import { registerBalanceResource, registerDocsResource, registerWebhooksResource } from './resources/index.js';
 
 const appId = process.env['WOOVI_APP_ID'];
 if (!appId) {
@@ -27,6 +28,10 @@ registerChargeTools(mcpServer, wooviClient);
 registerCustomerTools(mcpServer, wooviClient);
 registerTransactionTools(mcpServer, wooviClient);
 registerRefundTools(mcpServer, wooviClient);
+
+registerBalanceResource(mcpServer, wooviClient);
+registerDocsResource(mcpServer);
+registerWebhooksResource(mcpServer);
 
 console.error('[MCP Server] Initialized with Woovi API client');
 
