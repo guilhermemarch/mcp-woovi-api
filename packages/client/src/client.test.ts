@@ -139,7 +139,7 @@ describe('WooviClient', () => {
 
       mockFetch.mockImplementation(() => {
         callCount++;
-        timings.push(vi.now());
+        timings.push(Date.now());
         if (callCount < 3) {
           return Promise.resolve({
             ok: false,
