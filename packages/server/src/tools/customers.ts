@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { maskSensitiveData } from '../utils/masking.js';
 
 const createCustomerInputSchema = z.object({
   name: z.string().describe('Customer full name'),
@@ -14,16 +15,19 @@ const createCustomerInputSchema = z.object({
   phone: z.string().optional().describe('Customer phone number'),
   metadata: z.record(z.any()).optional().describe('Additional custom fields'),
 });
+type CreateCustomerInput = z.infer<typeof createCustomerInputSchema>;
 
 const getCustomerInputSchema = z.object({
   idOrEmail: z.string().describe('Customer ID or email address (auto-detected)'),
 });
+type GetCustomerInput = z.infer<typeof getCustomerInputSchema>;
 
 const listCustomersInputSchema = z.object({
   search: z.string().optional().describe('Search by name, email, or taxID'),
   skip: z.number().optional().describe('Pagination offset (default: 0)'),
   limit: z.number().optional().describe('Max records to return (default: 10)'),
 });
+type ListCustomersInput = z.infer<typeof listCustomersInputSchema>;
 
 export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviClient) {
   mcpServer.registerTool(
@@ -32,9 +36,9 @@ export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviCl
       description: 'Create a new customer in the Woovi platform. Requires name and at least one of: taxID, email, or phone. TaxID must be valid Brazilian CPF (11 digits) or CNPJ (14 digits). Returns complete customer object including generated ID, creation timestamp, and all provided fields.',
       inputSchema: createCustomerInputSchema as any,
     },
-    async (args: any) => {
+    async (args: CreateCustomerInput) => {
       try {
-        const customerData: any = {
+        const customerData: { name: string; email?: string; phone?: string; metadata?: Record<string, unknown>; taxID?: { taxID: string; type: string } } = {
           name: args.name,
           ...(args.email && { email: args.email }),
           ...(args.phone && { phone: args.phone }),
@@ -49,13 +53,14 @@ export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviCl
           };
         }
 
-        const result = await wooviClient.createCustomer(customerData);
+        const result = await wooviClient.createCustomer(customerData as any);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }
@@ -68,15 +73,16 @@ export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviCl
       description: 'Retrieve customer details by ID or email. Smart detection automatically routes to correct endpoint based on input format. Email detection: contains \'@\' symbol. Returns complete customer object with all fields including masked taxID for security.',
       inputSchema: getCustomerInputSchema as any,
     },
-    async (args: any) => {
+    async (args: GetCustomerInput) => {
       try {
         const result = await wooviClient.getCustomer(args.idOrEmail);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }
@@ -89,10 +95,10 @@ export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviCl
       description: 'List all customers with optional search and pagination. Search filters by name, email, or taxID. Pagination uses offset-based skip/limit pattern. Returns paginated results with totalCount and hasNextPage flag.',
       inputSchema: listCustomersInputSchema as any,
     },
-    async (args: any) => {
+    async (args: ListCustomersInput) => {
       try {
-        const filters: any = {};
-        
+        const filters: { search?: string; skip?: number; limit?: number } = {};
+
         if (args.search !== undefined) {
           filters.search = args.search;
         }
@@ -105,11 +111,12 @@ export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviCl
 
         const result = await wooviClient.listCustomers(filters);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }

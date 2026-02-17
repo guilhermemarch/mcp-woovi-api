@@ -8,6 +8,7 @@ const getTransactionsInputSchema = z.object({
   skip: z.number().optional().describe('Pagination offset (default: 0)'),
   limit: z.number().optional().describe('Max records to return (default: 10)'),
 });
+type GetTransactionsInput = z.infer<typeof getTransactionsInputSchema>;
 
 const getBalanceInputSchema = z.object({});
 
@@ -18,7 +19,7 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
       description: 'List all Pix transactions for the account with optional date range filtering and pagination. Supports filtering by startDate and endDate in ISO 8601 format. Pagination uses offset-based skip/limit pattern. Returns paginated transaction list with details including amount (in centavos), status, customer info, and timestamps. Useful for reconciliation, reporting, and transaction history analysis.',
       inputSchema: getTransactionsInputSchema as any,
     },
-    async (args: any) => {
+    async (args: GetTransactionsInput) => {
       try {
         const filters: {
           startDate?: Date;
@@ -47,9 +48,10 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }
@@ -62,15 +64,16 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
       description: 'Retrieve current account balance from Woovi API. Returns balance information including available balance (in centavos) and account details. Response is cached for 60 seconds to optimize performance and reduce API calls. Balance amounts are always in centavos (5000 = R$ 50.00). Use for dashboard displays, balance checks before operations, and account monitoring.',
       inputSchema: getBalanceInputSchema as any,
     },
-    async (_args: any) => {
+    async (_args: Record<string, never>) => {
       try {
         const result = await wooviClient.getBalance();
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }
