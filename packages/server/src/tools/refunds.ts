@@ -3,36 +3,39 @@ import type { WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 const createRefundInputSchema = z.object({
-  chargeID: z.string().describe('Charge ID or correlationID to refund'),
-  amount: z.number().optional().describe('Refund amount in centavos (5000 = R$ 50.00). If omitted, refunds full charge amount'),
-  comment: z.string().optional().describe('Optional comment or reason for refund'),
+  correlationID: z.string().describe('Unique identifier for this refund'),
+  value: z.number().describe('Refund value in centavos (e.g. 5000 = R$ 50.00)'),
+  comment: z.string().optional().describe('Comment or reason for the refund'),
 });
+type CreateRefundInput = z.infer<typeof createRefundInputSchema>;
 
 const getRefundInputSchema = z.object({
   refundID: z.string().describe('Unique refund identifier'),
 });
+type GetRefundInput = z.infer<typeof getRefundInputSchema>;
 
 export function registerRefundTools(mcpServer: McpServer, wooviClient: WooviClient) {
   mcpServer.registerTool(
     'create_refund',
     {
-      description: 'Create a refund for an existing charge. Supports full or partial refunds by specifying amount in centavos (5000 = R$ 50.00). If amount is omitted, refunds the full charge amount. Refunds are charge-scoped (POST /api/v1/charge/{id}/refund). Returns refund object with ID, status, amount, and timestamps. Use for processing customer refund requests, order cancellations, or dispute resolutions.',
+      description: 'Create a refund via POST /api/v1/refund. Requires a unique correlationID and value in centavos. Returns the refund object with status and timestamps.',
       inputSchema: createRefundInputSchema as any,
     },
-    async (args: any) => {
+    async (args: CreateRefundInput) => {
       try {
         const refundData = {
-          chargeId: args.chargeID,
-          amount: args.amount ?? 0,
-          ...(args.comment && { reason: args.comment }),
+          correlationID: args.correlationID,
+          value: args.value,
+          ...(args.comment && { comment: args.comment }),
         };
-        const result = await wooviClient.createRefund(args.chargeID, refundData as any);
+        const result = await wooviClient.createRefund(refundData as any);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }
@@ -42,18 +45,19 @@ export function registerRefundTools(mcpServer: McpServer, wooviClient: WooviClie
   mcpServer.registerTool(
     'get_refund',
     {
-      description: 'Retrieve refund details by refund ID. Returns complete refund information including amount (in centavos), status, associated charge ID, creation timestamp, and processing details. Use for tracking refund status, reconciliation, and customer support inquiries.',
+      description: 'Retrieve refund details by refund ID. Returns complete refund information including value (in centavos), status, and timestamps.',
       inputSchema: getRefundInputSchema as any,
     },
-    async (args: any) => {
+    async (args: GetRefundInput) => {
       try {
         const result = await wooviClient.getRefund(args.refundID);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
           isError: true,
         };
       }
