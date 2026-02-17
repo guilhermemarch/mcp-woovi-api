@@ -1,12 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WooviClient } from '@woovi/client';
+import { WooviClient, Logger } from '@woovi/client';
 import { registerChargeTools, registerCustomerTools, registerTransactionTools, registerRefundTools } from './tools/index.js';
 import { registerBalanceResource, registerDocsResource, registerWebhooksResource } from './resources/index.js';
 import { registerDailySummaryPrompt, registerCustomerReportPrompt, registerReconciliationCheckPrompt } from './prompts/index.js';
 
+const logger = new Logger('McpServer', 'info');
+
 const appId = process.env['WOOVI_APP_ID'];
 if (!appId) {
-  console.error('FATAL: WOOVI_APP_ID environment variable is required');
+  logger.error('WOOVI_APP_ID environment variable is required');
   process.exit(1);
 }
 
@@ -38,5 +40,9 @@ registerDailySummaryPrompt(mcpServer);
 registerCustomerReportPrompt(mcpServer);
 registerReconciliationCheckPrompt(mcpServer);
 
-console.error('[MCP Server] Initialized with Woovi API client');
-
+logger.info('MCP Server initialized', {
+  tools: 10,
+  resources: 3,
+  prompts: 3,
+  baseUrl,
+});

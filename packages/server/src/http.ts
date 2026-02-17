@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import express, { Request, Response } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { Logger } from '@woovi/client';
 import { mcpServer } from './server.js';
 import { randomUUID } from 'crypto';
+
+const logger = new Logger('HttpTransport', 'info');
 
 const app = express();
 app.use(express.json());
@@ -13,10 +16,10 @@ const transport = new StreamableHTTPServerTransport({
 });
 
 transport.onclose = () => {
-  console.error('[HTTP Transport] Connection closed');
+  logger.info('Connection closed');
 };
 transport.onerror = (error) => {
-  console.error('[HTTP Transport] Transport error:', error);
+  logger.error('Transport error', { error: String(error) });
 };
 
 // MCP endpoint
@@ -24,7 +27,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   try {
     await transport.handleRequest(req as any, res as any, req.body);
   } catch (error) {
-    console.error('[HTTP Transport] Error:', error);
+    logger.error('Request error', { error: String(error) });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -33,17 +36,16 @@ app.post('/mcp', async (req: Request, res: Response) => {
 async function main() {
   try {
     await mcpServer.connect(transport as any);
-    console.error('[HTTP Transport] Server connected to transport');
+    logger.info('Server connected to transport');
 
     const port = process.env['PORT'] || 3000;
     app.listen(port, () => {
-      console.error(`[HTTP Transport] Listening on port ${port}`);
+      logger.info('Listening', { port: Number(port) });
     });
   } catch (error) {
-    console.error('[HTTP Transport] Fatal error:', error);
+    logger.error('Fatal error', { error: String(error) });
     process.exit(1);
   }
 }
 
 main();
-
