@@ -79,7 +79,7 @@ describe('MCP Server Integration Tests', () => {
 
     it('should include transaction tools', async () => {
       const response = await client.listTools();
-      const transactionTools = response.tools.filter(t => 
+      const transactionTools = response.tools.filter(t =>
         t.name === 'get_transactions' || t.name === 'get_balance'
       );
       expect(transactionTools.length).toBe(2);
@@ -147,13 +147,20 @@ describe('MCP Server Integration Tests', () => {
   describe('tool call', () => {
     it('should call create_charge tool successfully with mocked WooviClient', async () => {
       const mockCreateCharge = vi.fn().mockResolvedValue({
-        charge: 'base64encodedid',
-        correlationID: 'test-correlation-123',
         value: 5000,
-        status: 'active',
+        correlationID: 'test-correlation-123',
+        identifier: 'id-1',
+        transactionID: 'tx-1',
+        status: 'ACTIVE',
         brCode: '00020126360014br.gov.bcb.brcode',
         qrCodeImage: 'data:image/png;base64,iVBORw0KGgo=',
+        paymentLinkUrl: 'https://pay.woovi.com/...',
+        pixKey: 'pix-key',
+        expiresDate: '2026-03-01T00:00:00Z',
+        type: 'DYNAMIC',
+        globalID: 'global-1',
         createdAt: '2026-02-12T00:00:00Z',
+        updatedAt: '2026-02-12T00:00:00Z',
       });
 
       mockWooviClient.createCharge = mockCreateCharge;
@@ -161,7 +168,8 @@ describe('MCP Server Integration Tests', () => {
       const response = await client.callTool({
         name: 'create_charge',
         arguments: {
-          amount: 5000,
+          value: 5000,
+          correlationID: 'test-correlation-123',
           customer: { name: 'Test Customer', email: 'test@example.com' },
         },
       });
@@ -169,7 +177,7 @@ describe('MCP Server Integration Tests', () => {
       expect(response.content).toBeDefined();
       expect(Array.isArray(response.content)).toBe(true);
       expect(response.content[0].type).toBe('text');
-      expect(response.content[0].text).toContain('base64encodedid');
+      expect(response.content[0].text).toContain('00020126360014br.gov.bcb.brcode');
       expect(mockCreateCharge).toHaveBeenCalled();
     });
   });
@@ -190,7 +198,7 @@ describe('MCP Server Integration Tests', () => {
       expect(response.contents).toBeDefined();
       expect(Array.isArray(response.contents)).toBe(true);
       expect(response.contents[0].mimeType).toBe('application/json');
-      
+
       const content = response.contents[0];
       if ('text' in content) {
         const data = JSON.parse(content.text);
@@ -212,7 +220,7 @@ describe('MCP Server Integration Tests', () => {
       expect(response.messages.length).toBeGreaterThan(0);
       expect(response.messages[0]).toHaveProperty('role');
       expect(response.messages[0]).toHaveProperty('content');
-      
+
       const messageContent = response.messages[0].content;
       if ('type' in messageContent && messageContent.type === 'text' && 'text' in messageContent) {
         expect(messageContent.text).toBeTruthy();
