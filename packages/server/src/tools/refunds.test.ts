@@ -27,7 +27,7 @@ describe('Refund Tools', () => {
       expect(createRefundTool.description).toContain('centavos');
     });
 
-    it('should validate input with Zod schema requiring chargeID', async () => {
+    it('should validate input with Zod schema requiring correlationID and value', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -42,16 +42,19 @@ describe('Refund Tools', () => {
 
       // Valid input should parse
       const validInput = {
-        chargeID: 'test-charge-123',
+        correlationID: 'refund-corr-1',
+        value: 5000,
       };
       expect(() => schema.parse(validInput)).not.toThrow();
 
-      // Invalid input (missing chargeID) should fail
-      const invalidInput = {};
-      expect(() => schema.parse(invalidInput)).toThrow();
+      // Invalid input (missing correlationID) should fail
+      expect(() => schema.parse({ value: 5000 })).toThrow();
+
+      // Invalid input (missing value) should fail
+      expect(() => schema.parse({ correlationID: 'test' })).toThrow();
     });
 
-    it('should validate amount is a number when provided', async () => {
+    it('should validate value is a number', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -64,22 +67,22 @@ describe('Refund Tools', () => {
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
       const schema = createRefundTool.inputSchema as z.ZodObject<any>;
 
-      // Valid input with amount
+      // Valid input with value
       const validInput = {
-        chargeID: 'test-charge-123',
-        amount: 5000,
+        correlationID: 'refund-corr-1',
+        value: 5000,
       };
       expect(() => schema.parse(validInput)).not.toThrow();
 
-      // Invalid amount type should fail
+      // Invalid value type should fail
       const invalidInput = {
-        chargeID: 'test-charge-123',
-        amount: 'not-a-number',
+        correlationID: 'refund-corr-1',
+        value: 'not-a-number',
       };
       expect(() => schema.parse(invalidInput)).toThrow();
     });
 
-    it('should call wooviClient.createRefund() for full refund (no amount)', async () => {
+    it('should call wooviClient.createRefund() with correct data', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -88,11 +91,10 @@ describe('Refund Tools', () => {
       };
 
       const mockCreateRefund = vi.fn().mockResolvedValue({
-        id: 'refund-123',
-        chargeId: 'test-charge-123',
-        amount: 5000,
-        status: 'completed',
-        createdAt: new Date('2026-02-12T00:00:00Z'),
+        correlationID: 'refund-corr-1',
+        value: 5000,
+        status: 'COMPLETED',
+        createdAt: '2026-02-12T00:00:00Z',
       });
 
       const mockClient = {
@@ -103,18 +105,19 @@ describe('Refund Tools', () => {
 
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
       const result = await createRefundTool.handler({
-        chargeID: 'test-charge-123',
+        correlationID: 'refund-corr-1',
+        value: 5000,
       });
 
-      expect(mockCreateRefund).toHaveBeenCalledWith('test-charge-123', {
-        chargeId: 'test-charge-123',
-        amount: 0,
+      expect(mockCreateRefund).toHaveBeenCalledWith({
+        correlationID: 'refund-corr-1',
+        value: 5000,
       });
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('refund-123');
+      expect(result.content[0].text).toContain('refund-corr-1');
     });
 
-    it('should call wooviClient.createRefund() for partial refund (with amount)', async () => {
+    it('should include comment when provided', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -123,11 +126,11 @@ describe('Refund Tools', () => {
       };
 
       const mockCreateRefund = vi.fn().mockResolvedValue({
-        id: 'refund-456',
-        chargeId: 'test-charge-456',
-        amount: 2500,
-        status: 'completed',
-        createdAt: new Date('2026-02-12T00:00:00Z'),
+        correlationID: 'refund-corr-2',
+        value: 2500,
+        status: 'COMPLETED',
+        comment: 'Customer request',
+        createdAt: '2026-02-12T00:00:00Z',
       });
 
       const mockClient = {
@@ -138,18 +141,18 @@ describe('Refund Tools', () => {
 
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
       const result = await createRefundTool.handler({
-        chargeID: 'test-charge-456',
-        amount: 2500,
+        correlationID: 'refund-corr-2',
+        value: 2500,
         comment: 'Customer request',
       });
 
-      expect(mockCreateRefund).toHaveBeenCalledWith('test-charge-456', {
-        chargeId: 'test-charge-456',
-        amount: 2500,
-        reason: 'Customer request',
+      expect(mockCreateRefund).toHaveBeenCalledWith({
+        correlationID: 'refund-corr-2',
+        value: 2500,
+        comment: 'Customer request',
       });
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('refund-456');
+      expect(result.content[0].text).toContain('refund-corr-2');
     });
 
     it('should return MCP-compliant response format', async () => {
@@ -162,18 +165,17 @@ describe('Refund Tools', () => {
 
       const mockClient = {
         createRefund: vi.fn().mockResolvedValue({
-          id: 'refund-789',
-          chargeId: 'test-charge-789',
-          amount: 1000,
-          status: 'completed',
-          createdAt: new Date(),
+          correlationID: 'refund-corr-789',
+          value: 1000,
+          status: 'COMPLETED',
+          createdAt: '2026-02-12T00:00:00Z',
         }),
       };
 
       registerRefundTools(mockServer as any, mockClient as any);
 
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
-      const result = await createRefundTool.handler({ chargeID: 'test-charge-789' });
+      const result = await createRefundTool.handler({ correlationID: 'refund-corr-789', value: 1000 });
 
       expect(result).toHaveProperty('content');
       expect(Array.isArray(result.content)).toBe(true);
@@ -196,7 +198,7 @@ describe('Refund Tools', () => {
       registerRefundTools(mockServer as any, mockClient as any);
 
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
-      const result = await createRefundTool.handler({ chargeID: 'test-charge-fail' });
+      const result = await createRefundTool.handler({ correlationID: 'test', value: 1000 });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Error:');
@@ -249,11 +251,10 @@ describe('Refund Tools', () => {
       };
 
       const mockGetRefund = vi.fn().mockResolvedValue({
-        id: 'refund-123',
-        chargeId: 'charge-abc',
-        amount: 5000,
-        status: 'completed',
-        createdAt: new Date('2026-02-12T00:00:00Z'),
+        correlationID: 'refund-123',
+        value: 5000,
+        status: 'COMPLETED',
+        createdAt: '2026-02-12T00:00:00Z',
       });
 
       const mockClient = {
@@ -278,11 +279,10 @@ describe('Refund Tools', () => {
 
       const mockClient = {
         getRefund: vi.fn().mockResolvedValue({
-          id: 'refund-999',
-          chargeId: 'charge-xyz',
-          amount: 3000,
-          status: 'completed',
-          createdAt: new Date(),
+          correlationID: 'refund-999',
+          value: 3000,
+          status: 'COMPLETED',
+          createdAt: '2026-02-12T00:00:00Z',
         }),
       };
 
@@ -293,7 +293,6 @@ describe('Refund Tools', () => {
 
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('refund-999');
-      expect(result.content[0].text).toContain('charge-xyz');
     });
 
     it('should handle errors with isError flag', async () => {

@@ -27,7 +27,7 @@ describe('Charge Tools', () => {
       expect(createChargeTool.description).toContain('centavos');
     });
 
-    it('should validate input with Zod schema requiring amount and customer', async () => {
+    it('should validate input with Zod schema requiring value and correlationID', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -42,14 +42,18 @@ describe('Charge Tools', () => {
 
       // Valid input should parse
       const validInput = {
-        amount: 5000,
-        customer: { name: 'Test Customer' },
+        value: 5000,
+        correlationID: 'test-uuid-123',
       };
       expect(() => schema.parse(validInput)).not.toThrow();
 
-      // Invalid input (missing amount) should fail
-      const invalidInput = { customer: { name: 'Test' } };
+      // Invalid input (missing value) should fail
+      const invalidInput = { correlationID: 'test-uuid' };
       expect(() => schema.parse(invalidInput)).toThrow();
+
+      // Invalid input (missing correlationID) should fail
+      const invalidInput2 = { value: 5000 };
+      expect(() => schema.parse(invalidInput2)).toThrow();
     });
 
     it('should call wooviClient.createCharge() with correct data', async () => {
@@ -61,13 +65,20 @@ describe('Charge Tools', () => {
       };
 
       const mockCreateCharge = vi.fn().mockResolvedValue({
-        charge: 'base64id',
-        correlationID: 'test-123',
         value: 5000,
-        status: 'active',
+        correlationID: 'test-123',
+        identifier: 'id-1',
+        transactionID: 'tx-1',
+        status: 'ACTIVE',
         brCode: 'br-code',
         qrCodeImage: 'data:image',
+        paymentLinkUrl: 'https://pay.woovi.com/...',
+        pixKey: 'pix-key',
+        expiresDate: '2026-03-01T00:00:00Z',
+        type: 'DYNAMIC',
+        globalID: 'global-1',
         createdAt: '2026-02-12T00:00:00Z',
+        updatedAt: '2026-02-12T00:00:00Z',
       });
 
       const mockClient = {
@@ -78,17 +89,18 @@ describe('Charge Tools', () => {
 
       const createChargeTool = registeredTools.find(t => t.name === 'create_charge');
       const result = await createChargeTool.handler({
-        amount: 5000,
+        value: 5000,
+        correlationID: 'test-123',
         customer: { name: 'Test Customer', email: 'test@example.com' },
       });
 
       expect(mockCreateCharge).toHaveBeenCalledWith({
-        amount: 5000,
-        description: '',
+        value: 5000,
+        correlationID: 'test-123',
         customer: { name: 'Test Customer', email: 'test@example.com' },
       });
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('base64id');
+      expect(result.content[0].text).toContain('br-code');
     });
 
     it('should return MCP-compliant response format', async () => {
@@ -100,13 +112,13 @@ describe('Charge Tools', () => {
       };
 
       const mockClient = {
-        createCharge: vi.fn().mockResolvedValue({ charge: 'id', correlationID: 'test' }),
+        createCharge: vi.fn().mockResolvedValue({ correlationID: 'test', value: 1000 }),
       };
 
       registerChargeTools(mockServer as any, mockClient as any);
 
       const createChargeTool = registeredTools.find(t => t.name === 'create_charge');
-      const result = await createChargeTool.handler({ amount: 1000, customer: { name: 'Test' } });
+      const result = await createChargeTool.handler({ value: 1000, correlationID: 'test' });
 
       expect(result).toHaveProperty('content');
       expect(Array.isArray(result.content)).toBe(true);
@@ -129,7 +141,7 @@ describe('Charge Tools', () => {
       registerChargeTools(mockServer as any, mockClient as any);
 
       const createChargeTool = registeredTools.find(t => t.name === 'create_charge');
-      const result = await createChargeTool.handler({ amount: 1000, customer: { name: 'Test' } });
+      const result = await createChargeTool.handler({ value: 1000, correlationID: 'test' });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Error:');
@@ -182,10 +194,20 @@ describe('Charge Tools', () => {
       };
 
       const mockGetCharge = vi.fn().mockResolvedValue({
-        charge: 'base64id',
-        correlationID: 'test-123',
         value: 5000,
-        status: 'active',
+        correlationID: 'test-123',
+        identifier: 'id-1',
+        transactionID: 'tx-1',
+        status: 'ACTIVE',
+        brCode: 'br-code',
+        paymentLinkUrl: 'url',
+        qrCodeImage: 'qr',
+        pixKey: 'pix',
+        expiresDate: '2026-03-01T00:00:00Z',
+        type: 'DYNAMIC',
+        globalID: 'global-1',
+        createdAt: '2026-02-12T00:00:00Z',
+        updatedAt: '2026-02-12T00:00:00Z',
       });
 
       const mockClient = {
@@ -230,9 +252,9 @@ describe('Charge Tools', () => {
       const listChargesTool = registeredTools.find(t => t.name === 'list_charges');
       const schema = listChargesTool.inputSchema as z.ZodObject<any>;
 
-      // Valid input with all fields
+      // Valid input with all fields (UPPERCASE status)
       expect(() => schema.parse({
-        status: 'active',
+        status: 'ACTIVE',
         startDate: '2026-01-01',
         endDate: '2026-12-31',
         skip: 0,
@@ -266,10 +288,10 @@ describe('Charge Tools', () => {
       registerChargeTools(mockServer as any, mockClient as any);
 
       const listChargesTool = registeredTools.find(t => t.name === 'list_charges');
-      await listChargesTool.handler({ status: 'active', skip: 10, limit: 20 });
+      await listChargesTool.handler({ status: 'ACTIVE', skip: 10, limit: 20 });
 
       expect(mockListCharges).toHaveBeenCalledWith({
-        status: 'active',
+        status: 'ACTIVE',
         skip: 10,
         limit: 20,
       });
@@ -285,7 +307,7 @@ describe('Charge Tools', () => {
 
       const mockClient = {
         listCharges: vi.fn().mockResolvedValue({
-          items: [{ charge: 'id1' }, { charge: 'id2' }],
+          items: [{ correlationID: 'id1' }, { correlationID: 'id2' }],
           pageInfo: { skip: 0, limit: 10, totalCount: 2, hasNextPage: false },
         }),
       };
