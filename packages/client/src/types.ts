@@ -16,6 +16,17 @@ export interface ChargeInput {
   };
   expiresIn?: number;
   additionalInfo?: { key: string; value: string }[];
+  redirectUrl?: string;
+  ensureSameTaxID?: boolean;
+  discountSettings?: {
+    modality: 'fixed' | 'percentage';
+    amount: number;
+  };
+  splits?: {
+    pixKey: string;
+    splitType: 'fixed' | 'percentage';
+    amount: number;
+  }[];
 }
 
 export interface Charge {
@@ -33,6 +44,16 @@ export interface Charge {
   globalID: string;
   customer?: Customer;
   additionalInfo?: { key: string; value: string }[];
+  redirectUrl?: string;
+  discountSettings?: {
+    modality: 'fixed' | 'percentage';
+    amount: number;
+  };
+  splits?: {
+    pixKey: string;
+    splitType: 'fixed' | 'percentage';
+    amount: number;
+  }[];
   createdAt: string;
   updatedAt: string;
 }

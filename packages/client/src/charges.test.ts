@@ -89,6 +89,47 @@ describe('WooviClient - Charge Methods', () => {
       );
     });
 
+    it('should include all optional fields (redirectUrl, splits, discountSettings) in request', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          value: 1000,
+          correlationID: 'test-123',
+          identifier: 'id-1',
+          transactionID: 'tx-1',
+          status: 'ACTIVE',
+          brCode: 'br-code',
+          paymentLinkUrl: 'url',
+          qrCodeImage: 'qr',
+          pixKey: 'pix',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-1',
+          createdAt: '2026-02-12T00:00:00Z',
+          updatedAt: '2026-02-12T00:00:00Z',
+        }),
+      });
+
+      const chargeInput: ChargeInput = {
+        value: 1000,
+        correlationID: 'test-123',
+        redirectUrl: 'https://example.com',
+        ensureSameTaxID: true,
+        discountSettings: { modality: 'fixed', amount: 50 },
+        splits: [{ pixKey: 'key1', splitType: 'fixed', amount: 100 }],
+      };
+
+      await client.createCharge(chargeInput);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify(chargeInput),
+        })
+      );
+    });
+
     it('should return Charge object with all API response fields', async () => {
       const chargeResponse = {
         value: 10000,

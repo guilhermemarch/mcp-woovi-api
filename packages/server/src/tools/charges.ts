@@ -18,6 +18,17 @@ const createChargeInputSchema = z.object({
     key: z.string(),
     value: z.string(),
   })).optional().describe('Additional key-value info shown on payment page'),
+  redirectUrl: z.string().optional().describe('URL to redirect customer after payment'),
+  ensureSameTaxID: z.boolean().optional().describe('Ensure payment is made by the same TaxID'),
+  discountSettings: z.object({
+    modality: z.enum(['fixed', 'percentage']),
+    amount: z.number(),
+  }).optional().describe('Discount settings'),
+  splits: z.array(z.object({
+    pixKey: z.string(),
+    splitType: z.enum(['fixed', 'percentage']),
+    amount: z.number(),
+  })).optional().describe('Payment split configuration'),
 });
 type CreateChargeInput = z.infer<typeof createChargeInputSchema>;
 
@@ -52,6 +63,10 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
           ...(args.customer && { customer: args.customer }),
           ...(args.expiresIn && { expiresIn: args.expiresIn }),
           ...(args.additionalInfo && { additionalInfo: args.additionalInfo }),
+          ...(args.redirectUrl && { redirectUrl: args.redirectUrl }),
+          ...(args.ensureSameTaxID && { ensureSameTaxID: args.ensureSameTaxID }),
+          ...(args.discountSettings && { discountSettings: args.discountSettings }),
+          ...(args.splits && { splits: args.splits }),
         };
         const result = await wooviClient.createCharge(chargeData as any);
         return {
