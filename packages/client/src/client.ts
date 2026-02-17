@@ -1,33 +1,56 @@
 import { SimpleCache } from './cache.js';
+import { Logger } from './logger.js';
 import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types.js';
+
+export interface WooviClientConfig {
+  baseUrl?: string;
+  timeoutMs?: number;
+}
 
 export class WooviClient {
   private appId: string;
   private baseUrl: string;
+  private timeoutMs: number;
+  private logger: Logger;
   // @ts-ignore - accessed via string key in tests
   private cache: SimpleCache<string, any>;
 
-  constructor(appId: string, baseUrl?: string) {
+  constructor(appId: string, configOrBaseUrl?: string | WooviClientConfig) {
     if (!appId || appId.trim() === '') {
       throw new Error('appId is required and cannot be empty');
     }
 
     this.appId = appId;
-    this.baseUrl = baseUrl || 'https://api.openpix.com.br';
+
+    if (typeof configOrBaseUrl === 'string') {
+      this.baseUrl = configOrBaseUrl;
+      this.timeoutMs = 30_000;
+    } else {
+      this.baseUrl = configOrBaseUrl?.baseUrl || 'https://api.woovi.com';
+      this.timeoutMs = configOrBaseUrl?.timeoutMs ?? 30_000;
+    }
+
     this.cache = new SimpleCache();
+    this.logger = new Logger('WooviClient', 'info');
+    this.logger.info('Client initialized', { baseUrl: this.baseUrl, timeoutMs: this.timeoutMs });
   }
 
   // @ts-ignore - accessed via string key in tests
   private async makeRequest(method: string, path: string, body?: any): Promise<any> {
     const url = `${this.baseUrl}${path}`;
+    this.logger.debug('Request started', { method, path });
     const headers: Record<string, string> = {
       Authorization: this.appId,
       'Content-Type': 'application/json',
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
     const options: RequestInit = {
       method,
       headers,
+      signal: controller.signal,
     };
 
     if (body) {
@@ -38,46 +61,57 @@ export class WooviClient {
     const maxRetries = 3;
     const baseDelays = [100, 200, 400];
 
-    while (attempt <= maxRetries) {
-      try {
-        const response = await fetch(url, options);
+    try {
+      while (attempt <= maxRetries) {
+        try {
+          const response = await fetch(url, options);
 
-        // Success case
-        if (response.ok) {
-          return await response.json();
-        }
+          // Success case
+          if (response.ok) {
+            return await response.json();
+          }
 
-        // 401/403: immediate failure, no retry
-        if (response.status === 401 || response.status === 403) {
-          throw new Error(`Auth error: ${response.status}`);
-        }
+          // 401/403: immediate failure, no retry
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(`Auth error: ${response.status}`);
+          }
 
-        // 429: retry with exponential backoff
-        if (response.status === 429 && attempt < maxRetries) {
-          const delay = baseDelays[attempt] ?? 5000;
-          await this.sleep(delay);
+          // 429: retry with exponential backoff
+          if (response.status === 429 && attempt < maxRetries) {
+            const delay = baseDelays[attempt] ?? 5000;
+            this.logger.warn('Rate limited (429), retrying', { attempt: attempt + 1, delayMs: delay, path });
+            await this.sleep(delay);
+            attempt++;
+            continue;
+          }
+
+          // Other errors: throw immediately
+          throw new Error(`Request failed with status ${response.status}`);
+        } catch (error) {
+          // Abort errors (timeout): throw immediately with clear message
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            this.logger.error('Request timed out', { path, timeoutMs: this.timeoutMs });
+            throw new Error(`Request timed out after ${this.timeoutMs}ms`);
+          }
+
+          // If we've exhausted retries, throw the error
+          if (attempt >= maxRetries) {
+            throw error;
+          }
+
+          // For non-429 errors, throw immediately
+          if (error instanceof Error && !error.message.includes('429')) {
+            throw error;
+          }
+
           attempt++;
-          continue;
         }
-
-        // Other errors: throw immediately
-        throw new Error(`Request failed with status ${response.status}`);
-      } catch (error) {
-        // If we've exhausted retries, throw the error
-        if (attempt >= maxRetries) {
-          throw error;
-        }
-
-        // For non-429 errors, throw immediately
-        if (error instanceof Error && !error.message.includes('429')) {
-          throw error;
-        }
-
-        attempt++;
       }
-    }
 
-    throw new Error('Request failed: max retries exceeded');
+      throw new Error('Request failed: max retries exceeded');
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private sleep(ms: number): Promise<void> {
@@ -105,7 +139,7 @@ export class WooviClient {
   }
 
   async createCharge(data: ChargeInput): Promise<Charge> {
-    return await this.makeRequest('POST', '/api/openpix/v1/charge', data);
+    return await this.makeRequest('POST', '/api/v1/charge', data);
   }
 
   async getCharge(correlationID: string): Promise<Charge> {
@@ -230,9 +264,8 @@ export class WooviClient {
     return balance;
   }
 
-  async createRefund(chargeId: string, data: RefundInput): Promise<Refund> {
-    const encodedId = encodeURIComponent(chargeId);
-    return await this.makeRequest('POST', `/api/v1/charge/${encodedId}/refund`, data);
+  async createRefund(data: RefundInput): Promise<Refund> {
+    return await this.makeRequest('POST', '/api/v1/refund', data);
   }
 
   async getRefund(refundId: string): Promise<Refund> {
