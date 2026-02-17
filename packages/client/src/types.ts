@@ -4,62 +4,83 @@ export interface TaxID {
 }
 
 export interface ChargeInput {
-  amount: number;
-  description: string;
-  status?: string;
+  value: number;
+  correlationID: string;
+  type?: 'DYNAMIC' | 'OVERDUE' | 'BOLETO';
+  comment?: string;
+  customer?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    taxID?: string;
+  };
+  expiresIn?: number;
+  additionalInfo?: { key: string; value: string }[];
 }
 
 export interface Charge {
-  id: string;
-  amount: number;
-  description: string;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
+  value: number;
+  correlationID: string;
+  identifier: string;
+  transactionID: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'EXPIRED';
+  brCode: string;
+  paymentLinkUrl: string;
+  qrCodeImage: string;
+  pixKey: string;
+  expiresDate: string;
+  type: string;
+  globalID: string;
+  customer?: Customer;
+  additionalInfo?: { key: string; value: string }[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CustomerInput {
   name: string;
   email?: string;
-  taxID: TaxID;
+  phone?: string;
+  taxID?: TaxID;
+  correlationID?: string;
 }
 
 export interface Customer {
-  id: string;
   name: string;
   email?: string;
-  taxID: TaxID;
-  createdAt: Date;
-  updatedAt: Date;
+  phone?: string;
+  taxID?: TaxID;
+  correlationID?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Transaction {
-  id: string;
-  chargeId: string;
-  amount: number;
-  type: 'DEBIT' | 'CREDIT';
+  value: number;
+  type: string;
   status: string;
-  createdAt: Date;
+  correlationID?: string;
+  createdAt: string;
 }
 
 export interface Balance {
+  total: number;
+  blocked: number;
   available: number;
-  pending: number;
 }
 
 export interface RefundInput {
-  chargeId: string;
-  amount: number;
-  reason?: string;
+  correlationID: string;
+  value: number;
+  comment?: string;
 }
 
 export interface Refund {
-  id: string;
-  chargeId: string;
-  amount: number;
+  correlationID: string;
+  value: number;
   status: string;
-  reason?: string;
-  createdAt: Date;
+  comment?: string;
+  createdAt: string;
 }
 
 export interface PageInfo {
