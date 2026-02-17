@@ -30,7 +30,7 @@ Create a `.env` file in the project root:
 WOOVI_APP_ID=your-app-id-here
 
 # Optional: Woovi API base URL (defaults to production)
-WOOVI_API_URL=https://api.openpix.com.br
+WOOVI_API_URL=https://api.woovi.com
 
 # Optional: HTTP server port (defaults to 3000)
 PORT=3000
@@ -80,7 +80,8 @@ The server listens on port 3000 (or `$PORT`) and accepts MCP requests at `POST /
 *Calls `create_charge` tool with:*
 ```json
 {
-  "amount": 5000,
+  "value": 5000,
+  "correlationID": "unique-uuid-here",
   "customer": {
     "name": "João Silva",
     "email": "joao@example.com"
@@ -160,7 +161,7 @@ mcp-woovi-server-ts/
 
 ## Important Notes
 
-- **Amount Values**: Always specified in centavos (5000 = R$ 50.00)
+- **Value Fields**: Always specified in centavos (5000 = R$ 50.00)
 - **CPF/CNPJ**: Automatically detected based on length (11 digits = CPF, 14 digits = CNPJ)
 - **Caching**: Balance and customer lookups are cached for 60 seconds
 - **Rate Limiting**: Automatic exponential backoff on 429 (Too Many Requests) errors
