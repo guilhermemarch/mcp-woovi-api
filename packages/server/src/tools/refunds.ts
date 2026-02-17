@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { maskSensitiveData } from '../utils/masking.js';
 
 const createRefundInputSchema = z.object({
   correlationID: z.string().describe('Unique identifier for this refund'),
@@ -30,7 +31,7 @@ export function registerRefundTools(mcpServer: McpServer, wooviClient: WooviClie
         };
         const result = await wooviClient.createRefund(refundData as any);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -52,7 +53,7 @@ export function registerRefundTools(mcpServer: McpServer, wooviClient: WooviClie
       try {
         const result = await wooviClient.getRefund(args.refundID);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);

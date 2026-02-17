@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { maskSensitiveData } from '../utils/masking.js';
 
 const getTransactionsInputSchema = z.object({
   startDate: z.string().optional().describe('Start date filter (ISO 8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ)'),
@@ -46,7 +47,7 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
 
         const result = await wooviClient.listTransactions(filters);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -68,7 +69,7 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
       try {
         const result = await wooviClient.getBalance();
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);

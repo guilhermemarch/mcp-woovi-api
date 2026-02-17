@@ -59,7 +59,7 @@ export class WooviClient {
 
     let attempt = 0;
     const maxRetries = 3;
-    const baseDelays = [100, 200, 400];
+    const baseDelays = [1000, 2000, 5000];
 
     try {
       while (attempt <= maxRetries) {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { maskSensitiveData } from '../utils/masking.js';
 
 const createChargeInputSchema = z.object({
   value: z.number().describe('Charge value in centavos (e.g. 5000 = R$ 50.00)'),
@@ -70,7 +71,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
         };
         const result = await wooviClient.createCharge(chargeData as any);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -92,7 +93,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
       try {
         const result = await wooviClient.getCharge(args.correlationID);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -121,7 +122,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
         };
         const result = await wooviClient.listCharges(filters);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
