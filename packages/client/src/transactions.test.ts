@@ -67,20 +67,16 @@ describe('WooviClient Transaction Methods', () => {
     it('should return PaginatedResult<Transaction> with items and pageInfo', async () => {
       const transactionItems: Transaction[] = [
         {
-          id: 'txn-1',
-          chargeId: 'charge-1',
-          amount: 5000,
+          value: 5000,
           type: 'DEBIT',
           status: 'COMPLETED',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
         },
         {
-          id: 'txn-2',
-          chargeId: 'charge-2',
-          amount: 10000,
+          value: 10000,
           type: 'CREDIT',
           status: 'PENDING',
-          createdAt: new Date('2025-02-12T11:00:00Z'),
+          createdAt: '2026-02-12T11:00:00Z',
         },
       ];
 
@@ -139,8 +135,9 @@ describe('WooviClient Transaction Methods', () => {
         status: 200,
         json: async () => ({
           balance: {
+            total: 100000,
+            blocked: 20000,
             available: 80000,
-            pending: 20000,
           },
         }),
       });
@@ -148,7 +145,7 @@ describe('WooviClient Transaction Methods', () => {
       await client.getBalance();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.openpix.com.br/api/v1/account/',
+        'https://api.woovi.com/api/v1/account/',
         expect.objectContaining({ method: 'GET' })
       );
     });
@@ -160,8 +157,9 @@ describe('WooviClient Transaction Methods', () => {
         status: 200,
         json: async () => ({
           balance: {
+            total: 100000,
+            blocked: 20000,
             available: 80000,
-            pending: 20000,
           },
         }),
       });
@@ -169,29 +167,32 @@ describe('WooviClient Transaction Methods', () => {
       await client.getBalance(accountId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/account/${accountId}`,
+        `https://api.woovi.com/api/v1/account/${accountId}`,
         expect.objectContaining({ method: 'GET' })
       );
     });
 
-    it('should return Balance object with available and pending fields', async () => {
+    it('should return Balance object with total, blocked, and available fields', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({
           balance: {
+            total: 150000,
+            blocked: 50000,
             available: 100000,
-            pending: 50000,
           },
         }),
       });
 
       const result = await client.getBalance();
 
+      expect(result).toHaveProperty('total');
+      expect(result).toHaveProperty('blocked');
       expect(result).toHaveProperty('available');
-      expect(result).toHaveProperty('pending');
+      expect(result.total).toBe(150000);
+      expect(result.blocked).toBe(50000);
       expect(result.available).toBe(100000);
-      expect(result.pending).toBe(50000);
     });
 
     it('should cache balance for 60 seconds (cache hit - no second fetch)', async () => {
@@ -200,8 +201,9 @@ describe('WooviClient Transaction Methods', () => {
         status: 200,
         json: async () => ({
           balance: {
+            total: 100000,
+            blocked: 20000,
             available: 80000,
-            pending: 20000,
           },
         }),
       });
@@ -221,8 +223,9 @@ describe('WooviClient Transaction Methods', () => {
         status: 200,
         json: async () => ({
           balance: {
+            total: 100000,
+            blocked: 20000,
             available: 80000,
-            pending: 20000,
           },
         }),
       });
@@ -239,8 +242,9 @@ describe('WooviClient Transaction Methods', () => {
         status: 200,
         json: async () => ({
           balance: {
-            available: 90000,
-            pending: 10000,
+            total: 110000,
+            blocked: 10000,
+            available: 100000,
           },
         }),
       });
@@ -252,56 +256,52 @@ describe('WooviClient Transaction Methods', () => {
   });
 
   describe('createRefund', () => {
-    it('should POST to /api/v1/charge/${chargeId}/refund endpoint (charge-scoped)', async () => {
-      const chargeId = 'charge-123';
+    it('should POST to /api/v1/refund endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'refund-1',
-          chargeId: chargeId,
-          amount: 5000,
+          correlationID: 'refund-corr-1',
+          value: 5000,
           status: 'PENDING',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       const refundInput: RefundInput = {
-        chargeId: chargeId,
-        amount: 5000,
-        reason: 'Customer request',
+        correlationID: 'refund-corr-1',
+        value: 5000,
+        comment: 'Customer request',
       };
 
-      await client.createRefund(chargeId, refundInput);
+      await client.createRefund(refundInput);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/charge/${chargeId}/refund`,
+        'https://api.woovi.com/api/v1/refund',
         expect.objectContaining({ method: 'POST' })
       );
     });
 
-    it('should send RefundInput body with amount and reason', async () => {
-      const chargeId = 'charge-456';
+    it('should send RefundInput body with correlationID, value, and comment', async () => {
       const refundInput: RefundInput = {
-        chargeId: chargeId,
-        amount: 10000,
-        reason: 'Duplicate payment',
+        correlationID: 'refund-corr-2',
+        value: 10000,
+        comment: 'Duplicate payment',
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'refund-2',
-          chargeId: chargeId,
-          amount: 10000,
+          correlationID: 'refund-corr-2',
+          value: 10000,
           status: 'COMPLETED',
-          reason: 'Duplicate payment',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
+          comment: 'Duplicate payment',
+          createdAt: '2026-02-12T10:00:00Z',
         }),
       });
 
-      await client.createRefund(chargeId, refundInput);
+      await client.createRefund(refundInput);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -319,18 +319,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: refundId,
-          chargeId: 'charge-1',
-          amount: 5000,
+          correlationID: refundId,
+          value: 5000,
           status: 'COMPLETED',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       await client.getRefund(refundId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/refund/${refundId}`,
+        `https://api.woovi.com/api/v1/refund/${refundId}`,
         expect.objectContaining({ method: 'GET' })
       );
     });
@@ -342,18 +341,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: refundIdWithSpecialChars,
-          chargeId: 'charge-1',
-          amount: 5000,
+          correlationID: refundIdWithSpecialChars,
+          value: 5000,
           status: 'COMPLETED',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       await client.getRefund(refundIdWithSpecialChars);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/refund/${encodedId}`,
+        `https://api.woovi.com/api/v1/refund/${encodedId}`,
         expect.any(Object)
       );
     });

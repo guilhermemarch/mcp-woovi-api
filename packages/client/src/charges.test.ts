@@ -17,29 +17,37 @@ describe('WooviClient - Charge Methods', () => {
   });
 
   describe('createCharge', () => {
-    it('should POST to /api/openpix/v1/charge endpoint', async () => {
+    it('should POST to /api/v1/charge endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'charge-123',
-          amount: 5000,
-          description: 'Test charge',
-          status: 'PENDING',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          value: 5000,
+          correlationID: 'test-corr-123',
+          identifier: 'id-1',
+          transactionID: 'tx-1',
+          status: 'ACTIVE',
+          brCode: '00020126...',
+          paymentLinkUrl: 'https://pay.woovi.com/...',
+          qrCodeImage: 'https://api.woovi.com/qr/...',
+          pixKey: 'pix-key',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-1',
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       const chargeInput: ChargeInput = {
-        amount: 5000,
-        description: 'Test charge',
+        value: 5000,
+        correlationID: 'test-corr-123',
       };
 
       await client.createCharge(chargeInput);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.openpix.com.br/api/openpix/v1/charge',
+        'https://api.woovi.com/api/v1/charge',
         expect.objectContaining({ method: 'POST' })
       );
     });
@@ -49,18 +57,26 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'charge-123',
-          amount: 5000,
-          description: 'Test charge',
-          status: 'PENDING',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          value: 5000,
+          correlationID: 'test-corr-123',
+          identifier: 'id-1',
+          transactionID: 'tx-1',
+          status: 'ACTIVE',
+          brCode: 'br-code',
+          paymentLinkUrl: 'https://pay.woovi.com/...',
+          qrCodeImage: 'https://api.woovi.com/qr/...',
+          pixKey: 'pix-key',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-1',
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       const chargeInput: ChargeInput = {
-        amount: 5000,
-        description: 'Test charge',
+        value: 5000,
+        correlationID: 'test-corr-123',
       };
 
       await client.createCharge(chargeInput);
@@ -73,14 +89,22 @@ describe('WooviClient - Charge Methods', () => {
       );
     });
 
-    it('should return Charge object with all fields', async () => {
-      const chargeResponse: Charge = {
-        id: 'charge-456',
-        amount: 10000,
-        description: 'Product purchase',
-        status: 'PENDING',
-        createdAt: new Date('2025-02-12T10:00:00Z'),
-        updatedAt: new Date('2025-02-12T10:00:00Z'),
+    it('should return Charge object with all API response fields', async () => {
+      const chargeResponse = {
+        value: 10000,
+        correlationID: 'corr-456',
+        identifier: 'id-456',
+        transactionID: 'tx-456',
+        status: 'ACTIVE',
+        brCode: '00020126...',
+        paymentLinkUrl: 'https://pay.woovi.com/...',
+        qrCodeImage: 'https://api.woovi.com/qr/...',
+        pixKey: 'pix-key',
+        expiresDate: '2026-03-01T00:00:00Z',
+        type: 'DYNAMIC',
+        globalID: 'global-456',
+        createdAt: '2026-02-12T10:00:00Z',
+        updatedAt: '2026-02-12T10:00:00Z',
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -90,35 +114,43 @@ describe('WooviClient - Charge Methods', () => {
       });
 
       const result = await client.createCharge({
-        amount: 10000,
-        description: 'Product purchase',
+        value: 10000,
+        correlationID: 'corr-456',
       });
 
       expect(result).toEqual(chargeResponse);
-      expect(result.amount).toBe(10000); // Verify centavos
+      expect(result.value).toBe(10000); // Verify centavos
     });
 
-    it('should handle amount in centavos (integer)', async () => {
+    it('should handle value in centavos (integer)', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'charge-789',
-          amount: 50000, // R$ 500.00 in centavos
-          description: 'High value charge',
-          status: 'PENDING',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          value: 50000, // R$ 500.00 in centavos
+          correlationID: 'corr-789',
+          identifier: 'id-789',
+          transactionID: 'tx-789',
+          status: 'ACTIVE',
+          brCode: 'br-code',
+          paymentLinkUrl: 'https://pay.woovi.com/...',
+          qrCodeImage: 'https://api.woovi.com/qr/...',
+          pixKey: 'pix-key',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-789',
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       const result = await client.createCharge({
-        amount: 50000,
-        description: 'High value charge',
+        value: 50000,
+        correlationID: 'corr-789',
       });
 
-      expect(result.amount).toBe(50000);
-      expect(Number.isInteger(result.amount)).toBe(true);
+      expect(result.value).toBe(50000);
+      expect(Number.isInteger(result.value)).toBe(true);
     });
   });
 
@@ -129,19 +161,27 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: chargeId,
-          amount: 5000,
-          description: 'Test charge',
+          value: 5000,
+          correlationID: chargeId,
+          identifier: 'id-abc',
+          transactionID: 'tx-abc',
           status: 'COMPLETED',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          brCode: 'br-code',
+          paymentLinkUrl: 'https://pay.woovi.com/...',
+          qrCodeImage: 'https://api.woovi.com/qr/...',
+          pixKey: 'pix-key',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-abc',
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       await client.getCharge(chargeId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/charge/${chargeId}`,
+        `https://api.woovi.com/api/v1/charge/${chargeId}`,
         expect.objectContaining({ method: 'GET' })
       );
     });
@@ -153,31 +193,47 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: chargeIdWithSpaces,
-          amount: 5000,
-          description: 'Test charge',
+          value: 5000,
+          correlationID: chargeIdWithSpaces,
+          identifier: 'id-enc',
+          transactionID: 'tx-enc',
           status: 'COMPLETED',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          brCode: 'br-code',
+          paymentLinkUrl: 'https://pay.woovi.com/...',
+          qrCodeImage: 'https://api.woovi.com/qr/...',
+          pixKey: 'pix-key',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-enc',
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       await client.getCharge(chargeIdWithSpaces);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/charge/${encodedId}`,
+        `https://api.woovi.com/api/v1/charge/${encodedId}`,
         expect.any(Object)
       );
     });
 
     it('should return Charge object', async () => {
-      const chargeResponse: Charge = {
-        id: 'charge-def456',
-        amount: 15000,
-        description: 'Service charge',
-        status: 'COMPLETED',
-        createdAt: new Date('2025-02-12T10:00:00Z'),
-        updatedAt: new Date('2025-02-12T10:00:00Z'),
+      const chargeResponse = {
+        value: 15000,
+        correlationID: 'corr-def456',
+        identifier: 'id-def',
+        transactionID: 'tx-def',
+        status: 'COMPLETED' as const,
+        brCode: 'br-code',
+        paymentLinkUrl: 'https://pay.woovi.com/...',
+        qrCodeImage: 'https://api.woovi.com/qr/...',
+        pixKey: 'pix-key',
+        expiresDate: '2026-03-01T00:00:00Z',
+        type: 'DYNAMIC',
+        globalID: 'global-def',
+        createdAt: '2026-02-12T10:00:00Z',
+        updatedAt: '2026-02-12T10:00:00Z',
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -186,10 +242,10 @@ describe('WooviClient - Charge Methods', () => {
         json: async () => chargeResponse,
       });
 
-      const result = await client.getCharge('charge-def456');
+      const result = await client.getCharge('corr-def456');
 
       expect(result).toEqual(chargeResponse);
-      expect(result.id).toBe('charge-def456');
+      expect(result.correlationID).toBe('corr-def456');
     });
   });
 
@@ -240,22 +296,38 @@ describe('WooviClient - Charge Methods', () => {
     });
 
     it('should return PaginatedResult<Charge> with items array', async () => {
-      const chargeItems: Charge[] = [
+      const chargeItems = [
         {
-          id: 'charge-1',
-          amount: 5000,
-          description: 'First charge',
+          value: 5000,
+          correlationID: 'corr-1',
+          identifier: 'id-1',
+          transactionID: 'tx-1',
           status: 'COMPLETED',
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          brCode: 'br-code-1',
+          paymentLinkUrl: 'url-1',
+          qrCodeImage: 'qr-1',
+          pixKey: 'pix-1',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-1',
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         },
         {
-          id: 'charge-2',
-          amount: 10000,
-          description: 'Second charge',
-          status: 'PENDING',
-          createdAt: new Date('2025-02-12T11:00:00Z'),
-          updatedAt: new Date('2025-02-12T11:00:00Z'),
+          value: 10000,
+          correlationID: 'corr-2',
+          identifier: 'id-2',
+          transactionID: 'tx-2',
+          status: 'ACTIVE',
+          brCode: 'br-code-2',
+          paymentLinkUrl: 'url-2',
+          qrCodeImage: 'qr-2',
+          pixKey: 'pix-2',
+          expiresDate: '2026-03-01T00:00:00Z',
+          type: 'DYNAMIC',
+          globalID: 'global-2',
+          createdAt: '2026-02-12T11:00:00Z',
+          updatedAt: '2026-02-12T11:00:00Z',
         },
       ];
 

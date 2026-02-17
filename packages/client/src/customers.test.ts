@@ -22,12 +22,11 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'cust-123',
           name: 'Test Customer',
           email: 'test@example.com',
           taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
@@ -40,7 +39,7 @@ describe('WooviClient - Customer Methods', () => {
       await client.createCustomer(customerInput);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.openpix.com.br/api/v1/customer',
+        'https://api.woovi.com/api/v1/customer',
         expect.objectContaining({ method: 'POST' })
       );
     });
@@ -50,12 +49,11 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 201,
         json: async () => ({
-          id: 'cust-123',
           name: 'João Silva',
           email: 'joao@example.com',
           taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
@@ -77,12 +75,11 @@ describe('WooviClient - Customer Methods', () => {
 
     it('should return Customer with taxID as object (not string)', async () => {
       const customerResponse: Customer = {
-        id: 'cust-456',
         name: 'João Silva',
         email: 'joao@example.com',
         taxID: { taxID: '12345678901', type: 'BR:CPF' },
-        createdAt: new Date('2025-02-12T10:00:00Z'),
-        updatedAt: new Date('2025-02-12T10:00:00Z'),
+        createdAt: '2026-02-12T10:00:00Z',
+        updatedAt: '2026-02-12T10:00:00Z',
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -99,18 +96,17 @@ describe('WooviClient - Customer Methods', () => {
 
       expect(result.taxID).toEqual({ taxID: '12345678901', type: 'BR:CPF' });
       expect(typeof result.taxID).toBe('object');
-      expect(result.taxID.taxID).toBe('12345678901');
-      expect(result.taxID.type).toBe('BR:CPF');
+      expect(result.taxID!.taxID).toBe('12345678901');
+      expect(result.taxID!.type).toBe('BR:CPF');
     });
 
     it('should accept CNPJ tax ID type', async () => {
       const customerResponse: Customer = {
-        id: 'cust-789',
         name: 'Empresa LTDA',
         email: 'empresa@example.com',
         taxID: { taxID: '12345678000100', type: 'BR:CNPJ' },
-        createdAt: new Date('2025-02-12T10:00:00Z'),
-        updatedAt: new Date('2025-02-12T10:00:00Z'),
+        createdAt: '2026-02-12T10:00:00Z',
+        updatedAt: '2026-02-12T10:00:00Z',
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -125,18 +121,17 @@ describe('WooviClient - Customer Methods', () => {
         taxID: { taxID: '12345678000100', type: 'BR:CNPJ' },
       });
 
-      expect(result.taxID.type).toBe('BR:CNPJ');
-      expect(result.taxID.taxID).toBe('12345678000100');
+      expect(result.taxID!.type).toBe('BR:CNPJ');
+      expect(result.taxID!.taxID).toBe('12345678000100');
     });
 
     it('should include all required fields in response', async () => {
       const customerResponse: Customer = {
-        id: 'cust-999',
         name: 'Test User',
         email: 'test@example.com',
         taxID: { taxID: '12345678901', type: 'BR:CPF' },
-        createdAt: new Date('2025-02-12T10:00:00Z'),
-        updatedAt: new Date('2025-02-12T10:00:00Z'),
+        createdAt: '2026-02-12T10:00:00Z',
+        updatedAt: '2026-02-12T10:00:00Z',
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -151,7 +146,6 @@ describe('WooviClient - Customer Methods', () => {
         taxID: { taxID: '12345678901', type: 'BR:CPF' },
       });
 
-      expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('name');
       expect(result).toHaveProperty('email');
       expect(result).toHaveProperty('taxID');
@@ -167,19 +161,18 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: customerId,
           name: 'Test Customer',
           email: 'test@example.com',
           taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       await client.getCustomer(customerId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/customer/${customerId}`,
+        `https://api.woovi.com/api/v1/customer/${customerId}`,
         expect.objectContaining({ method: 'GET' })
       );
     });
@@ -190,12 +183,11 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: 'cust-123',
           name: 'João Silva',
           email: email,
           taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
@@ -208,12 +200,11 @@ describe('WooviClient - Customer Methods', () => {
 
     it('should return Customer object with correct structure', async () => {
       const customerResponse: Customer = {
-        id: 'cust-def456',
         name: 'Maria Santos',
         email: 'maria@example.com',
         taxID: { taxID: '98765432109', type: 'BR:CPF' },
-        createdAt: new Date('2025-02-12T10:00:00Z'),
-        updatedAt: new Date('2025-02-12T10:00:00Z'),
+        createdAt: '2026-02-12T10:00:00Z',
+        updatedAt: '2026-02-12T10:00:00Z',
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -225,7 +216,6 @@ describe('WooviClient - Customer Methods', () => {
       const result = await client.getCustomer('cust-def456');
 
       expect(result).toEqual(customerResponse);
-      expect(result.id).toBe('cust-def456');
       expect(result.name).toBe('Maria Santos');
     });
 
@@ -236,19 +226,18 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          id: customerId,
           name: 'Test Customer',
           email: 'test@example.com',
           taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         }),
       });
 
       await client.getCustomer(customerId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.openpix.com.br/api/v1/customer/${encodedId}`,
+        `https://api.woovi.com/api/v1/customer/${encodedId}`,
         expect.any(Object)
       );
     });
@@ -324,20 +313,18 @@ describe('WooviClient - Customer Methods', () => {
     it('should return PaginatedResult with items array', async () => {
       const customerItems: Customer[] = [
         {
-          id: 'cust-1',
           name: 'Customer One',
           email: 'cust1@example.com',
           taxID: { taxID: '11111111111', type: 'BR:CPF' },
-          createdAt: new Date('2025-02-12T10:00:00Z'),
-          updatedAt: new Date('2025-02-12T10:00:00Z'),
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
         },
         {
-          id: 'cust-2',
           name: 'Customer Two',
           email: 'cust2@example.com',
           taxID: { taxID: '22222222222', type: 'BR:CPF' },
-          createdAt: new Date('2025-02-12T11:00:00Z'),
-          updatedAt: new Date('2025-02-12T11:00:00Z'),
+          createdAt: '2026-02-12T11:00:00Z',
+          updatedAt: '2026-02-12T11:00:00Z',
         },
       ];
 

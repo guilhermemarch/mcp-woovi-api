@@ -27,9 +27,9 @@ describe('WooviClient', () => {
       expect(client).toBeDefined();
     });
 
-    it('should default baseUrl to https://api.openpix.com.br', () => {
+    it('should default baseUrl to https://api.woovi.com', () => {
       const client = new WooviClient('test-app-id');
-      expect(client['baseUrl']).toBe('https://api.openpix.com.br');
+      expect(client['baseUrl']).toBe('https://api.woovi.com');
     });
 
     it('should throw if appId is empty', () => {
@@ -176,15 +176,19 @@ describe('WooviClient', () => {
         json: async () => ({ error: 'Rate limited' }),
       });
 
-      const result = client['makeRequest']('GET', '/endpoint');
+      let caughtError: Error | undefined;
+      const result = client['makeRequest']('GET', '/endpoint').catch((err) => {
+        caughtError = err;
+      });
 
-      // Advance through all retries
+      // Advance through all retries and flush microtasks
       await vi.advanceTimersByTimeAsync(100);
       await vi.advanceTimersByTimeAsync(200);
       await vi.advanceTimersByTimeAsync(400);
+      await vi.advanceTimersByTimeAsync(5000);
 
-      // Should not wait more than 5000ms total
-      await expect(result).rejects.toThrow();
+      await result;
+      expect(caughtError).toBeDefined();
     });
 
     it('should fail after 3 retry attempts on 429', async () => {
@@ -195,14 +199,18 @@ describe('WooviClient', () => {
         json: async () => ({ error: 'Rate limit exceeded' }),
       });
 
-      const result = client['makeRequest']('GET', '/test');
+      let caughtError: Error | undefined;
+      const result = client['makeRequest']('GET', '/test').catch((err) => {
+        caughtError = err;
+      });
 
       await vi.advanceTimersByTimeAsync(100);
       await vi.advanceTimersByTimeAsync(200);
       await vi.advanceTimersByTimeAsync(400);
-      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(5000);
 
-      await expect(result).rejects.toThrow();
+      await result;
+      expect(caughtError).toBeDefined();
       expect(mockFetch).toHaveBeenCalledTimes(4); // Initial + 3 retries
     });
 
@@ -351,7 +359,7 @@ describe('WooviClient', () => {
   describe('Logging with Masking', () => {
     it('should mask sensitive data in logged requests', async () => {
       const client = new WooviClient('test-app-id');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
