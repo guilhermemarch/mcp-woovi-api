@@ -107,15 +107,16 @@ The server listens on port 3000 (or `$PORT`) and accepts MCP requests at `POST /
 
 See [TOOLS.md](TOOLS.md) for the complete tool catalog with input schemas and descriptions.
 
-Quick reference:
 - **Charges**: `create_charge`, `get_charge`, `list_charges`
 - **Customers**: `create_customer`, `get_customer`, `list_customers`
 - **Transactions**: `get_transactions`, `get_balance`
 - **Refunds**: `create_refund`, `get_refund`
 
-## Architecture
+## 📚 Documentation
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system architecture, data flow, and package structure.
+- [**Architecture**](docs/architecture/README.md) - System design and patterns
+- [**Tools Reference**](docs/tools/README.md) - Full list of available tools
+- [**Development**](packages/README.md) - Setup and contribution guide
 
 ## Development
 
@@ -179,10 +180,6 @@ Run tests:
 ```bash
 pnpm test
 ```
-
-## License
-
-MIT
 
 ## Support
 

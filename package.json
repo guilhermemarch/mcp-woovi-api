@@ -5,14 +5,19 @@
   "private": true,
   "type": "module",
   "workspaces": {
-    "packages": ["packages/*"]
+    "packages": [
+      "packages/*"
+    ]
   },
   "scripts": {
     "build": "pnpm -r build",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "dev": "pnpm -r dev"
+    "test:coverage": "vitest --coverage",
+    "dev": "pnpm -r dev",
+    "verify": "npx tsx scripts/verify-mcp.ts",
+    "test:sandbox": "npx tsx scripts/test-sandbox.ts"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
