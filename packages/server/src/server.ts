@@ -12,7 +12,9 @@ if (!appId) {
   process.exit(1);
 }
 
-const baseUrl = process.env['WOOVI_API_URL'] || 'https://api.openpix.com.br';
+// Production: https://api.woovi.com
+// Sandbox: https://api.woovi-sandbox.com
+const baseUrl = process.env['WOOVI_API_URL'] || 'https://api.woovi.com';
 
 export const wooviClient = new WooviClient(appId, baseUrl);
 
