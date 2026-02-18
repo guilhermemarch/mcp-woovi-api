@@ -179,6 +179,7 @@ export class WooviClient {
         skip,
         limit,
         totalCount: response.totalCount || 0,
+        hasPreviousPage: skip > 0,
         hasNextPage: response.hasNextPage || false,
       },
     };
@@ -220,6 +221,7 @@ export class WooviClient {
         skip,
         limit,
         totalCount: response.totalCount || 0,
+        hasPreviousPage: skip > 0,
         hasNextPage: response.hasNextPage || false,
       },
     };
@@ -249,6 +251,7 @@ export class WooviClient {
         skip,
         limit,
         totalCount: response.totalCount || 0,
+        hasPreviousPage: skip > 0,
         hasNextPage: response.hasNextPage || false,
       },
     };
