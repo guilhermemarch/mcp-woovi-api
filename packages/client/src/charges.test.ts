@@ -296,11 +296,12 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          charges: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
+            hasPreviousPage: false,
             hasNextPage: false,
           },
         }),
@@ -319,12 +320,13 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          charges: [],
           pageInfo: {
-            skip: 20,
+            skip: 0,
             limit: 10,
-            totalCount: 100,
-            hasNextPage: true,
+            totalCount: 0,
+            hasPreviousPage: false,
+            hasNextPage: false,
           },
         }),
       });
@@ -376,11 +378,12 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: chargeItems,
+          charges: chargeItems,
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 2,
+            hasPreviousPage: false,
             hasNextPage: false,
           },
         }),
@@ -392,11 +395,12 @@ describe('WooviClient - Charge Methods', () => {
       expect(result.items).toHaveLength(2);
     });
 
-    it('should return pageInfo with skip, limit, totalCount, hasNextPage', async () => {
+    it('should return pageInfo with skip, limit, totalCount, hasPreviousPage, hasNextPage', async () => {
       const expectedPageInfo: PageInfo = {
         skip: 10,
         limit: 10,
         totalCount: 50,
+        hasPreviousPage: true,
         hasNextPage: true,
       };
 
@@ -404,7 +408,7 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          charges: [],
           pageInfo: expectedPageInfo,
         }),
       });
@@ -415,6 +419,7 @@ describe('WooviClient - Charge Methods', () => {
       expect(result.pageInfo.skip).toBe(10);
       expect(result.pageInfo.limit).toBe(10);
       expect(result.pageInfo.totalCount).toBe(50);
+      expect(result.pageInfo.hasPreviousPage).toBe(true);
       expect(result.pageInfo.hasNextPage).toBe(true);
     });
 
@@ -423,11 +428,12 @@ describe('WooviClient - Charge Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          charges: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
+            hasPreviousPage: false,
             hasNextPage: false,
           },
         }),
