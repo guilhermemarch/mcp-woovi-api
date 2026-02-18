@@ -277,8 +277,10 @@ describe('Charge Tools', () => {
       };
 
       const mockListCharges = vi.fn().mockResolvedValue({
-        items: [],
-        pageInfo: { skip: 0, limit: 10, totalCount: 0, hasNextPage: false },
+        charges: [],
+        pageInfo: { skip: 0, limit: 10, totalCount: 0,
+          hasPreviousPage: false,
+          hasNextPage: false },
       });
 
       const mockClient = {
@@ -307,8 +309,10 @@ describe('Charge Tools', () => {
 
       const mockClient = {
         listCharges: vi.fn().mockResolvedValue({
-          items: [{ correlationID: 'id1' }, { correlationID: 'id2' }],
-          pageInfo: { skip: 0, limit: 10, totalCount: 2, hasNextPage: false },
+          charges: [{ correlationID: 'id1' }, { correlationID: 'id2' }],
+          pageInfo: { skip: 0, limit: 10, totalCount: 2,
+          hasPreviousPage: false,
+          hasNextPage: false },
         }),
       };
 

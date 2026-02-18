@@ -108,6 +108,7 @@ export interface PageInfo {
   skip: number;
   limit: number;
   totalCount: number;
+  hasPreviousPage: boolean;
   hasNextPage: boolean;
 }
 

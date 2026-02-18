@@ -206,6 +206,7 @@ describe('Type Definitions', () => {
           skip: 0,
           limit: 10,
           totalCount: 1,
+          hasPreviousPage: false,
           hasNextPage: false,
         },
       };
@@ -233,6 +234,7 @@ describe('Type Definitions', () => {
           skip: 0,
           limit: 20,
           totalCount: 100,
+          hasPreviousPage: false,
           hasNextPage: true,
         },
       };

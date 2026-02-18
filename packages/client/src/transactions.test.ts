@@ -24,12 +24,13 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          transactions: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
@@ -47,12 +48,13 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          transactions: [],
           pageInfo: {
             skip: 5,
             limit: 20,
             totalCount: 100,
-            hasNextPage: true,
+          hasPreviousPage: true,
+          hasNextPage: true,
           },
         }),
       });
@@ -84,12 +86,13 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: transactionItems,
+          transactions: transactionItems,
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 2,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
@@ -107,12 +110,13 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          transactions: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });

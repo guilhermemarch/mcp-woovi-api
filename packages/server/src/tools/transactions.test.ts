@@ -68,7 +68,7 @@ describe('Transaction Tools', () => {
       };
 
       const mockListTransactions = vi.fn().mockResolvedValue({
-        items: [
+        transactions: [
           {
             id: 'txn-1',
             chargeId: 'charge-1',
@@ -78,7 +78,9 @@ describe('Transaction Tools', () => {
             createdAt: new Date('2026-02-12T00:00:00Z'),
           },
         ],
-        pageInfo: { skip: 0, limit: 10, totalCount: 1, hasNextPage: false },
+        pageInfo: { skip: 0, limit: 10, totalCount: 1,
+          hasPreviousPage: false,
+          hasNextPage: false },
       });
 
       const mockClient = {
@@ -112,8 +114,10 @@ describe('Transaction Tools', () => {
       };
 
       const mockListTransactions = vi.fn().mockResolvedValue({
-        items: [],
-        pageInfo: { skip: 0, limit: 10, totalCount: 0, hasNextPage: false },
+        transactions: [],
+        pageInfo: { skip: 0, limit: 10, totalCount: 0,
+          hasPreviousPage: false,
+          hasNextPage: false },
       });
 
       const mockClient = {
@@ -138,11 +142,13 @@ describe('Transaction Tools', () => {
 
       const mockClient = {
         listTransactions: vi.fn().mockResolvedValue({
-          items: [
+          transactions: [
             { id: 'txn-1', amount: 5000, type: 'CREDIT', status: 'completed' },
             { id: 'txn-2', amount: 3000, type: 'DEBIT', status: 'completed' },
           ],
-          pageInfo: { skip: 0, limit: 10, totalCount: 2, hasNextPage: false },
+          pageInfo: { skip: 0, limit: 10, totalCount: 2,
+          hasPreviousPage: false,
+          hasNextPage: false },
         }),
       };
 
@@ -168,8 +174,10 @@ describe('Transaction Tools', () => {
       };
 
       const mockListTransactions = vi.fn().mockResolvedValue({
-        items: [],
-        pageInfo: { skip: 0, limit: 10, totalCount: 0, hasNextPage: false },
+        transactions: [],
+        pageInfo: { skip: 0, limit: 10, totalCount: 0,
+          hasPreviousPage: false,
+          hasNextPage: false },
       });
 
       const mockClient = {
@@ -199,8 +207,10 @@ describe('Transaction Tools', () => {
       };
 
       const mockListTransactions = vi.fn().mockResolvedValue({
-        items: [],
-        pageInfo: { skip: 20, limit: 5, totalCount: 0, hasNextPage: false },
+        transactions: [],
+        pageInfo: { skip: 20, limit: 5, totalCount: 0,
+          hasPreviousPage: true,
+          hasNextPage: false },
       });
 
       const mockClient = {

@@ -381,7 +381,7 @@ describe('Customer Tools', () => {
       };
 
       const mockListCustomers = vi.fn().mockResolvedValue({
-        items: [
+        customers: [
           { id: 'cust_1', name: 'Customer 1' },
           { id: 'cust_2', name: 'Customer 2' },
         ],
@@ -389,6 +389,7 @@ describe('Customer Tools', () => {
           skip: 0,
           limit: 10,
           totalCount: 2,
+          hasPreviousPage: false,
           hasNextPage: false,
         },
       });
@@ -416,11 +417,12 @@ describe('Customer Tools', () => {
       };
 
       const mockListCustomers = vi.fn().mockResolvedValue({
-        items: [{ id: 'cust_3', name: 'Searched Customer' }],
+        customers: [{ id: 'cust_3', name: 'Searched Customer' }],
         pageInfo: {
           skip: 10,
           limit: 5,
           totalCount: 1,
+          hasPreviousPage: true,
           hasNextPage: false,
         },
       });

@@ -249,12 +249,13 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          customers: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
@@ -272,12 +273,13 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          customers: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
@@ -293,12 +295,13 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          customers: [],
           pageInfo: {
             skip: 20,
             limit: 15,
             totalCount: 100,
-            hasNextPage: true,
+          hasPreviousPage: true,
+          hasNextPage: true,
           },
         }),
       });
@@ -332,12 +335,13 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: customerItems,
+          customers: customerItems,
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 2,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
@@ -353,14 +357,15 @@ describe('WooviClient - Customer Methods', () => {
         skip: 10,
         limit: 10,
         totalCount: 50,
-        hasNextPage: true,
+          hasPreviousPage: true,
+          hasNextPage: true,
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          customers: [],
           pageInfo: expectedPageInfo,
         }),
       });
@@ -379,12 +384,13 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          customers: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
@@ -401,12 +407,13 @@ describe('WooviClient - Customer Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          items: [],
+          customers: [],
           pageInfo: {
             skip: 0,
             limit: 10,
             totalCount: 0,
-            hasNextPage: false,
+          hasPreviousPage: false,
+          hasNextPage: false,
           },
         }),
       });
