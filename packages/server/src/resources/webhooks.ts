@@ -9,10 +9,12 @@ const WEBHOOK_SCHEMAS = {
     "event": {
       "type": "string",
       "enum": [
-        "charge_completed",
-        "transaction_received",
-        "charge_created",
-        "refund_completed"
+        "OPENPIX:CHARGE_CREATED",
+        "OPENPIX:CHARGE_COMPLETED",
+        "OPENPIX:CHARGE_EXPIRED",
+        "OPENPIX:TRANSACTION_RECEIVED",
+        "OPENPIX:TRANSACTION_REFUND_RECEIVED",
+        "OPENPIX:MOVEMENT_CONFIRMED"
       ],
       "description": "The type of webhook event"
     },
@@ -145,10 +147,10 @@ const WEBHOOK_SCHEMAS = {
                   "description": "Refund reason or comment"
                 },
                 "status": {
-                  "type": "string",
-                  "enum": ["PENDING", "COMPLETED", "FAILED"],
-                  "description": "Current status of the refund"
-                },
+                   "type": "string",
+                   "enum": ["IN_PROCESSING", "CONFIRMED", "REJECTED"],
+                   "description": "Current status of the refund"
+                 },
                 "charge": {
                   "type": "object",
                   "properties": {
@@ -177,7 +179,7 @@ const WEBHOOK_SCHEMAS = {
   "required": ["event", "data"],
   "examples": [
     {
-      "event": "charge_completed",
+      "event": "OPENPIX:CHARGE_COMPLETED",
       "data": {
         "charge": {
           "correlationID": "abc123",
@@ -194,7 +196,7 @@ const WEBHOOK_SCHEMAS = {
       }
     },
     {
-      "event": "transaction_received",
+      "event": "OPENPIX:TRANSACTION_RECEIVED",
       "data": {
         "transaction": {
           "endToEndId": "E12345678202401151000",
@@ -219,7 +221,7 @@ export function registerWebhooksResource(mcpServer: McpServer) {
     'woovi://webhook-schemas',
     {
       title: 'Woovi Webhook Schemas',
-      description: 'JSON Schema definitions for Woovi webhook event payloads (charge_completed, transaction_received, charge_created, refund_completed)',
+      description: 'JSON Schema definitions for Woovi webhook event payloads (OPENPIX:CHARGE_CREATED, OPENPIX:CHARGE_COMPLETED, OPENPIX:CHARGE_EXPIRED, OPENPIX:TRANSACTION_RECEIVED, OPENPIX:TRANSACTION_REFUND_RECEIVED, OPENPIX:MOVEMENT_CONFIRMED)',
       mimeType: 'application/json',
     },
     async (uri) => {
