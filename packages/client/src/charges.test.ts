@@ -47,7 +47,7 @@ describe('WooviClient - Charge Methods', () => {
       await client.createCharge(chargeInput);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.woovi.com/api/v1/charge',
+        'https://api.woovi.com/api/v1/charge?return_existing=true',
         expect.objectContaining({ method: 'POST' })
       );
     });

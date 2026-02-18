@@ -97,7 +97,7 @@ describe('WooviClient', () => {
     });
   });
 
-  describe('Rate Limiting (429 handling)', () => {
+  describe('Rate Limiting (429 handling)', { timeout: 15000 }, () => {
     it('should retry on 429 with exponential backoff', async () => {
       const client = new WooviClient('test-app-id');
       mockFetch
@@ -121,10 +121,10 @@ describe('WooviClient', () => {
 
       // First failure immediately
       await vi.advanceTimersByTimeAsync(0);
-      // First retry after 100ms
-      await vi.advanceTimersByTimeAsync(100);
-      // Second failure, second retry after 200ms
-      await vi.advanceTimersByTimeAsync(200);
+      // First retry after 1000ms
+      await vi.advanceTimersByTimeAsync(1000);
+      // Second failure, second retry after 2000ms
+      await vi.advanceTimersByTimeAsync(2000);
       // Success
       await vi.advanceTimersByTimeAsync(0);
 
@@ -132,7 +132,7 @@ describe('WooviClient', () => {
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
 
-    it('should respect exponential backoff timing: 100ms, 200ms, 400ms', async () => {
+    it('should respect exponential backoff timing: 1000ms, 2000ms, 5000ms', async () => {
       const client = new WooviClient('test-app-id');
       const timings: number[] = [];
       let callCount = 0;
@@ -157,15 +157,15 @@ describe('WooviClient', () => {
       const result = client['makeRequest']('GET', '/test');
 
       // Advance through retry delays
-      await vi.advanceTimersByTimeAsync(100); // First retry
-      await vi.advanceTimersByTimeAsync(200); // Second retry
-      await vi.advanceTimersByTimeAsync(400); // Final attempt
+      await vi.advanceTimersByTimeAsync(1000); // First retry
+      await vi.advanceTimersByTimeAsync(2000); // Second retry
+      await vi.advanceTimersByTimeAsync(5000); // Final attempt
 
       await result;
 
       // Verify delays between calls
-      expect(timings[1] - timings[0]).toBe(100);
-      expect(timings[2] - timings[1]).toBe(200);
+      expect(timings[1] - timings[0]).toBe(1000);
+      expect(timings[2] - timings[1]).toBe(2000);
     });
 
     it('should cap max retry delay at 5000ms', async () => {
@@ -182,9 +182,9 @@ describe('WooviClient', () => {
       });
 
       // Advance through all retries and flush microtasks
-      await vi.advanceTimersByTimeAsync(100);
-      await vi.advanceTimersByTimeAsync(200);
-      await vi.advanceTimersByTimeAsync(400);
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(5000);
       await vi.advanceTimersByTimeAsync(5000);
 
       await result;
@@ -204,9 +204,9 @@ describe('WooviClient', () => {
         caughtError = err;
       });
 
-      await vi.advanceTimersByTimeAsync(100);
-      await vi.advanceTimersByTimeAsync(200);
-      await vi.advanceTimersByTimeAsync(400);
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(5000);
       await vi.advanceTimersByTimeAsync(5000);
 
       await result;
