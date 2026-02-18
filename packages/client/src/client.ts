@@ -7,6 +7,18 @@ export interface WooviClientConfig {
   timeoutMs?: number;
 }
 
+export class WooviApiError extends Error {
+  statusCode: number;
+  errorBody?: any;
+
+  constructor(message: string, statusCode: number, errorBody?: any) {
+    super(message);
+    this.name = 'WooviApiError';
+    this.statusCode = statusCode;
+    this.errorBody = errorBody;
+  }
+}
+
 export class WooviClient {
   private appId: string;
   private baseUrl: string;
@@ -85,8 +97,37 @@ export class WooviClient {
             continue;
           }
 
-          // Other errors: throw immediately
-          throw new Error(`Request failed with status ${response.status}`);
+          // For 429 at max retries or other errors: parse error body and throw
+          let errorMessage = `Request failed with status ${response.status}`;
+          let errorBody: any;
+
+          try {
+            errorBody = await response.json();
+
+            // Format 1: { error: "string" }
+            if (typeof errorBody.error === 'string') {
+              errorMessage = errorBody.error;
+            }
+            // Format 2: { error: [{ message, code?, path? }] }
+            else if (Array.isArray(errorBody.error) && errorBody.error.length > 0) {
+              const messages = errorBody.error.map((e: any) => e.message || String(e)).filter(Boolean);
+              if (messages.length > 0) {
+                errorMessage = messages.join('; ');
+              }
+            }
+            // Format 3: { errors: [{ message }] }
+            else if (Array.isArray(errorBody.errors) && errorBody.errors.length > 0) {
+              const messages = errorBody.errors.map((e: any) => e.message || String(e)).filter(Boolean);
+              if (messages.length > 0) {
+                errorMessage = messages.join('; ');
+              }
+            }
+          } catch (parseError) {
+            // Fallback: if JSON parsing fails, use status-only message
+            this.logger.warn('Failed to parse error body', { parseError });
+          }
+
+          throw new WooviApiError(errorMessage, response.status, errorBody);
         } catch (error) {
           // Abort errors (timeout): throw immediately with clear message
           if (error instanceof DOMException && error.name === 'AbortError') {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { WooviClient } from './client';
+import { WooviClient, WooviApiError } from './client';
 
 describe('WooviClient', () => {
   let mockFetch: ReturnType<typeof vi.fn>;
@@ -383,6 +383,151 @@ describe('WooviClient', () => {
       expect(logContent).not.toContain('11987654321');
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Error Body Parsing', () => {
+    it('should parse error string format: { error: "string" }', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Charge not found' }),
+      });
+
+      await expect(client['makeRequest']('GET', '/charge/123')).rejects.toThrow('Charge not found');
+    });
+
+    it('should parse error array format: { error: [{ message }] }', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: [
+            { code: 'INVALID_CPF', message: 'Invalid CPF format', path: 'customer.taxID' },
+            { code: 'REQUIRED_FIELD', message: 'Field "value" is required', path: 'value' }
+          ]
+        }),
+      });
+
+      await expect(client['makeRequest']('POST', '/charge', {}))
+        .rejects.toThrow('Invalid CPF format; Field "value" is required');
+    });
+
+    it('should parse errors array format: { errors: [{ message }] }', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          errors: [
+            { message: 'Field "value" is required' },
+            { message: 'Invalid email format' }
+          ]
+        }),
+      });
+
+      await expect(client['makeRequest']('POST', '/customer', {}))
+        .rejects.toThrow('Field "value" is required; Invalid email format');
+    });
+
+    it('should fallback gracefully for non-JSON error bodies', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => {
+          throw new Error('Invalid JSON');
+        },
+      });
+
+      await expect(client['makeRequest']('GET', '/endpoint'))
+        .rejects.toThrow('Request failed with status 500');
+    });
+
+    it('should throw WooviApiError with statusCode property', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Not found' }),
+      });
+
+      try {
+        await client['makeRequest']('GET', '/test');
+        expect.fail('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(WooviApiError);
+        expect((err as WooviApiError).statusCode).toBe(404);
+      }
+    });
+
+    it('should throw WooviApiError with errorBody property', async () => {
+      const client = new WooviClient('test-app-id');
+      const errorBody = { error: 'Resource not found' };
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => errorBody,
+      });
+
+      try {
+        await client['makeRequest']('GET', '/resource/123');
+        expect.fail('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(WooviApiError);
+        expect((err as WooviApiError).errorBody).toEqual(errorBody);
+      }
+    });
+
+    it('should handle error array with missing message fields', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: [
+            { code: 'ERR1', message: 'First error' },
+            { code: 'ERR2' }
+          ]
+        }),
+      });
+
+      await expect(client['makeRequest']('POST', '/test', {}))
+        .rejects.toThrow('First error; [object Object]');
+    });
+
+    it('should use status-only message for empty error body', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      });
+
+      await expect(client['makeRequest']('GET', '/endpoint'))
+        .rejects.toThrow('Request failed with status 503');
+    });
+
+    it('should handle plain text error body (non-JSON)', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        json: async () => {
+          throw new SyntaxError('Unexpected token');
+        },
+      });
+
+      try {
+        await client['makeRequest']('GET', '/test');
+        expect.fail('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(WooviApiError);
+        expect((err as WooviApiError).statusCode).toBe(502);
+        expect((err as WooviApiError).message).toContain('502');
+      }
     });
   });
 
