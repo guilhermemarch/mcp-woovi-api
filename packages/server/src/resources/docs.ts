@@ -6,7 +6,7 @@ Complete reference of available Woovi API endpoints.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | /api/openpix/v1/charge | Create a new charge (Pix payment request) |
+| POST | /api/v1/charge | Create a new charge (Pix payment request) |
 | GET | /api/v1/charge/{id} | Get a specific charge by correlation ID |
 | GET | /api/v1/charge/ | List all charges with optional filters |
 | POST | /api/v1/customer | Create a new customer |
@@ -20,7 +20,7 @@ Complete reference of available Woovi API endpoints.
 ## Charge Endpoints
 
 ### Create Charge
-- **POST** \`/api/openpix/v1/charge\`
+- **POST** \`/api/v1/charge\`
 - Creates a new Pix payment request
 - Amount values are in centavos (5000 = R$ 50.00)
 - Returns charge details including QR code and Pix copy-paste code

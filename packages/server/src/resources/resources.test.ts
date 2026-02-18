@@ -119,7 +119,7 @@ describe('Resource Registration', () => {
       const result = await docsResource.handler(mockUri);
 
       const text = result.contents[0].text;
-      expect(text).toContain('/api/openpix/v1/charge');
+      expect(text).toContain('/api/v1/charge');
       expect(text).toContain('/api/v1/charge/');
       expect(text).toContain('/api/v1/customer');
       expect(text).toContain('/api/v1/transaction/');
