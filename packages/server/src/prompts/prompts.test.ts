@@ -67,6 +67,34 @@ describe('MCP Prompts Registration', () => {
       expect(text).toContain('balance');
       expect(text).toContain('transaction');
     });
+
+    it('should have argsSchema with date field for daily_summary', () => {
+      const spy = vi.spyOn(mcpServer, 'registerPrompt');
+      registerDailySummaryPrompt(mcpServer);
+      
+      expect(spy).toHaveBeenCalledWith(
+        'daily_summary',
+        expect.objectContaining({
+          argsSchema: expect.any(Object),
+        }),
+        expect.any(Function)
+      );
+    });
+
+    it('should reference get_transactions (not list_transactions) in daily_summary prompt', async () => {
+      let handler: any;
+      vi.spyOn(mcpServer, 'registerPrompt').mockImplementation((name, _config, fn) => {
+        if (name === 'daily_summary') handler = fn;
+        return {} as any;
+      });
+      
+      registerDailySummaryPrompt(mcpServer);
+      const result = await handler({});
+      
+      const text = result.messages[0].content.text;
+      expect(text).toContain('get_transactions');
+      expect(text).not.toContain('list_transactions');
+    });
   });
 
   describe('customer_report prompt', () => {
@@ -152,6 +180,7 @@ describe('MCP Prompts Registration', () => {
         expect.objectContaining({
           title: expect.any(String),
           description: expect.any(String),
+          argsSchema: expect.any(Object),
         }),
         expect.any(Function)
       );
@@ -188,6 +217,21 @@ describe('MCP Prompts Registration', () => {
       expect(text).toContain('transaction');
       expect(text).toContain('charge');
       expect(text).toContain('reconcil');
+    });
+
+    it('should reference get_transactions (not list_transactions) in reconciliation_check prompt', async () => {
+      let handler: any;
+      vi.spyOn(mcpServer, 'registerPrompt').mockImplementation((name, _config, fn) => {
+        if (name === 'reconciliation_check') handler = fn;
+        return {} as any;
+      });
+      
+      registerReconciliationCheckPrompt(mcpServer);
+      const result = await handler({});
+      
+      const text = result.messages[0].content.text;
+      expect(text).toContain('get_transactions');
+      expect(text).not.toContain('list_transactions');
     });
   });
 
