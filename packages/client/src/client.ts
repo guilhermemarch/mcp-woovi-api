@@ -139,7 +139,7 @@ export class WooviClient {
   }
 
   async createCharge(data: ChargeInput): Promise<Charge> {
-    return await this.makeRequest('POST', '/api/v1/charge', data);
+    return await this.makeRequest('POST', '/api/v1/charge?return_existing=true', data);
   }
 
   async getCharge(correlationID: string): Promise<Charge> {
@@ -147,7 +147,7 @@ export class WooviClient {
     return await this.makeRequest('GET', `/api/v1/charge/${encodedID}`);
   }
 
-  async listCharges(filters?: { skip?: number; limit?: number; status?: string }): Promise<PaginatedResult<Charge>> {
+  async listCharges(filters?: { skip?: number; limit?: number; status?: string; startDate?: Date; endDate?: Date; customer?: string }): Promise<PaginatedResult<Charge>> {
     const skip = filters?.skip ?? 0;
     const limit = filters?.limit ?? 10;
     const params = new URLSearchParams({
@@ -159,10 +159,22 @@ export class WooviClient {
       params.set('status', filters.status);
     }
 
-    const response = await this.makeRequest('GET', `/api/v1/charge/?${params.toString()}`);
+    if (filters?.startDate) {
+      params.set('start', filters.startDate.toISOString());
+    }
+
+    if (filters?.endDate) {
+      params.set('end', filters.endDate.toISOString());
+    }
+
+    if (filters?.customer) {
+      params.set('customer', filters.customer);
+    }
+
+    const response = await this.makeRequest('GET', `/api/v1/charge?${params.toString()}`);
 
     return {
-      items: response.items || [],
+      items: response.charges || response.items || [],
       pageInfo: response.pageInfo || {
         skip,
         limit,
@@ -200,10 +212,10 @@ export class WooviClient {
       params.set('search', filters.search);
     }
 
-    const response = await this.makeRequest('GET', `/api/v1/customer/?${params.toString()}`);
+    const response = await this.makeRequest('GET', `/api/v1/customer?${params.toString()}`);
 
     return {
-      items: response.items || [],
+      items: response.customers || response.items || [],
       pageInfo: response.pageInfo || {
         skip,
         limit,
@@ -229,10 +241,10 @@ export class WooviClient {
       params.set('endDate', filters.endDate.toISOString());
     }
 
-    const response = await this.makeRequest('GET', `/api/v1/transaction/?${params.toString()}`);
+    const response = await this.makeRequest('GET', `/api/v1/transaction?${params.toString()}`);
 
     return {
-      items: response.items || [],
+      items: response.transactions || response.items || [],
       pageInfo: response.pageInfo || {
         skip,
         limit,
@@ -256,7 +268,11 @@ export class WooviClient {
     const response = await this.makeRequest('GET', endpoint);
 
     // Extract balance from response
-    const balance = response.balance;
+    const balance = response.balance || response;
+
+    if (!balance) {
+      this.logger.warn('Balance not found in response', { response });
+    }
 
     // Cache for 60 seconds
     this.cache.set(cacheKey, balance, 60000);
