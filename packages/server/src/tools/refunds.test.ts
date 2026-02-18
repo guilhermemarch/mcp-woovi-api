@@ -44,14 +44,13 @@ describe('Refund Tools', () => {
       const validInput = {
         correlationID: 'refund-corr-1',
         value: 5000,
+        transactionEndToEndId: 'e2e-123',
       };
       expect(() => schema.parse(validInput)).not.toThrow();
 
-      // Invalid input (missing correlationID) should fail
-      expect(() => schema.parse({ value: 5000 })).toThrow();
+      expect(() => schema.parse({ value: 5000, transactionEndToEndId: 'e2e-123' })).toThrow();
 
-      // Invalid input (missing value) should fail
-      expect(() => schema.parse({ correlationID: 'test' })).toThrow();
+      expect(() => schema.parse({ correlationID: 'test', transactionEndToEndId: 'e2e-123' })).toThrow();
     });
 
     it('should validate value is a number', async () => {
@@ -71,13 +70,14 @@ describe('Refund Tools', () => {
       const validInput = {
         correlationID: 'refund-corr-1',
         value: 5000,
+        transactionEndToEndId: 'e2e-123',
       };
       expect(() => schema.parse(validInput)).not.toThrow();
 
-      // Invalid value type should fail
       const invalidInput = {
         correlationID: 'refund-corr-1',
         value: 'not-a-number',
+        transactionEndToEndId: 'e2e-123',
       };
       expect(() => schema.parse(invalidInput)).toThrow();
     });
@@ -107,11 +107,13 @@ describe('Refund Tools', () => {
       const result = await createRefundTool.handler({
         correlationID: 'refund-corr-1',
         value: 5000,
+        transactionEndToEndId: 'e2e-123',
       });
 
       expect(mockCreateRefund).toHaveBeenCalledWith({
         correlationID: 'refund-corr-1',
         value: 5000,
+        transactionEndToEndId: 'e2e-123',
       });
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('refund-corr-1');
@@ -143,12 +145,14 @@ describe('Refund Tools', () => {
       const result = await createRefundTool.handler({
         correlationID: 'refund-corr-2',
         value: 2500,
+        transactionEndToEndId: 'e2e-456',
         comment: 'Customer request',
       });
 
       expect(mockCreateRefund).toHaveBeenCalledWith({
         correlationID: 'refund-corr-2',
         value: 2500,
+        transactionEndToEndId: 'e2e-456',
         comment: 'Customer request',
       });
       expect(result.content[0].type).toBe('text');
@@ -175,7 +179,7 @@ describe('Refund Tools', () => {
       registerRefundTools(mockServer as any, mockClient as any);
 
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
-      const result = await createRefundTool.handler({ correlationID: 'refund-corr-789', value: 1000 });
+      const result = await createRefundTool.handler({ correlationID: 'refund-corr-789', value: 1000, transactionEndToEndId: 'e2e-789' });
 
       expect(result).toHaveProperty('content');
       expect(Array.isArray(result.content)).toBe(true);
@@ -198,11 +202,136 @@ describe('Refund Tools', () => {
       registerRefundTools(mockServer as any, mockClient as any);
 
       const createRefundTool = registeredTools.find(t => t.name === 'create_refund');
-      const result = await createRefundTool.handler({ correlationID: 'test', value: 1000 });
+      const result = await createRefundTool.handler({ correlationID: 'test', value: 1000, transactionEndToEndId: 'e2e-test' });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Error:');
       expect(result.content[0].text).toContain('API failure');
+    });
+  });
+
+  describe('create_charge_refund tool', () => {
+    it('should register with correct name and description', () => {
+      const registeredTools: any[] = [];
+      const mockServer = {
+        registerTool: vi.fn((name, config, handler) => {
+          registeredTools.push({ name, ...config, handler });
+        }),
+      };
+
+      registerRefundTools(mockServer as any, mockClient);
+
+      const createChargeRefundTool = registeredTools.find(t => t.name === 'create_charge_refund');
+      expect(createChargeRefundTool).toBeDefined();
+      expect(createChargeRefundTool.description).toContain('charge');
+    });
+
+    it('should validate input with Zod schema requiring chargeID', async () => {
+      const registeredTools: any[] = [];
+      const mockServer = {
+        registerTool: vi.fn((name, config, handler) => {
+          registeredTools.push({ name, ...config, handler });
+        }),
+      };
+
+      registerRefundTools(mockServer as any, mockClient);
+
+      const createChargeRefundTool = registeredTools.find(t => t.name === 'create_charge_refund');
+      const schema = createChargeRefundTool.inputSchema as z.ZodObject<any>;
+
+      expect(() => schema.parse({ chargeID: 'charge-123' })).not.toThrow();
+
+      expect(() => schema.parse({})).toThrow();
+    });
+
+    it('should call wooviClient.createChargeRefund() with correct data', async () => {
+      const registeredTools: any[] = [];
+      const mockServer = {
+        registerTool: vi.fn((name, config, handler) => {
+          registeredTools.push({ name, ...config, handler });
+        }),
+      };
+
+      const mockCreateChargeRefund = vi.fn().mockResolvedValue({
+        value: 5000,
+        correlationID: 'charge-refund-1',
+        status: 'COMPLETED',
+        transactionEndToEndId: 'e2e-123',
+        createdAt: '2026-02-18T00:00:00Z',
+      });
+
+      const mockClient = {
+        createChargeRefund: mockCreateChargeRefund,
+      };
+
+      registerRefundTools(mockServer as any, mockClient as any);
+
+      const createChargeRefundTool = registeredTools.find(t => t.name === 'create_charge_refund');
+      const result = await createChargeRefundTool.handler({
+        chargeID: 'charge-123',
+        value: 5000,
+        correlationID: 'charge-refund-1',
+      });
+
+      expect(mockCreateChargeRefund).toHaveBeenCalledWith(
+        'charge-123',
+        {
+          value: 5000,
+          correlationID: 'charge-refund-1',
+        }
+      );
+      expect(result.content[0].type).toBe('text');
+    });
+
+    it('should return MCP-compliant response format', async () => {
+      const registeredTools: any[] = [];
+      const mockServer = {
+        registerTool: vi.fn((name, config, handler) => {
+          registeredTools.push({ name, ...config, handler });
+        }),
+      };
+
+      const mockClient = {
+        createChargeRefund: vi.fn().mockResolvedValue({
+          value: 5000,
+          correlationID: 'charge-refund-999',
+          status: 'COMPLETED',
+          transactionEndToEndId: 'e2e-999',
+          createdAt: '2026-02-18T00:00:00Z',
+        }),
+      };
+
+      registerRefundTools(mockServer as any, mockClient as any);
+
+      const createChargeRefundTool = registeredTools.find(t => t.name === 'create_charge_refund');
+      const result = await createChargeRefundTool.handler({ chargeID: 'charge-123' });
+
+      expect(result).toHaveProperty('content');
+      expect(Array.isArray(result.content)).toBe(true);
+      expect(result.content[0]).toHaveProperty('type', 'text');
+      expect(result.content[0]).toHaveProperty('text');
+    });
+
+    it('should handle errors with isError flag', async () => {
+      const registeredTools: any[] = [];
+      const mockServer = {
+        registerTool: vi.fn((name, config, handler) => {
+          registeredTools.push({ name, ...config, handler });
+        }),
+      };
+
+      const mockClient = {
+        createChargeRefund: vi.fn().mockRejectedValue(new Error('Charge not found')),
+      };
+
+      registerRefundTools(mockServer as any, mockClient as any);
+
+      const createChargeRefundTool = registeredTools.find(t => t.name === 'create_charge_refund');
+      const result = await createChargeRefundTool.handler({ chargeID: 'nonexistent' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error:');
+      expect(result.content[0].text).toContain('Charge not found');
     });
   });
 

@@ -90,9 +90,16 @@ export interface Balance {
   available: number;
 }
 
+export interface ChargeRefundInput {
+  value?: number;
+  correlationID?: string;
+  description?: string;
+}
+
 export interface RefundInput {
   correlationID: string;
   value: number;
+  transactionEndToEndId: string;
   comment?: string;
 }
 

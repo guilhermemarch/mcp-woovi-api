@@ -1,6 +1,6 @@
 import { SimpleCache } from './cache.js';
 import { Logger } from './logger.js';
-import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund } from './types.js';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund, ChargeRefundInput } from './types.js';
 
 export interface WooviClientConfig {
   baseUrl?: string;
@@ -295,6 +295,11 @@ export class WooviClient {
 
   async createRefund(data: RefundInput): Promise<Refund> {
     return await this.makeRequest('POST', '/api/v1/refund', data);
+  }
+
+  async createChargeRefund(chargeID: string, data: ChargeRefundInput): Promise<any> {
+    const response = await this.makeRequest('POST', `/api/v1/charge/${chargeID}/refund`, data);
+    return response.refund;
   }
 
   async getRefund(refundId: string): Promise<Refund> {
