@@ -7,12 +7,14 @@ describe('WooviClient - Customer Methods', () => {
   let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     mockFetch = vi.fn();
     vi.stubGlobal('fetch', mockFetch);
     client = new WooviClient('test-app-id');
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -240,6 +242,68 @@ describe('WooviClient - Customer Methods', () => {
         `https://api.woovi.com/api/v1/customer/${encodedId}`,
         expect.any(Object)
       );
+    });
+
+    it('should return cached customer on subsequent calls within TTL', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          name: 'Test Customer',
+          email: 'test@example.com',
+          taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
+        }),
+      });
+
+      // First call - should hit API
+      await client.getCustomer('cust_123');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Advance time by 59s (within 60s TTL)
+      vi.advanceTimersByTime(59000);
+
+      // Second call - should use cache (no new fetch)
+      await client.getCustomer('cust_123');
+      expect(mockFetch).toHaveBeenCalledTimes(1); // Still 1 call (cache hit)
+    });
+
+    it('should fetch fresh customer data after cache expires', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          name: 'Test Customer',
+          email: 'test@example.com',
+          taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T10:00:00Z',
+        }),
+      });
+
+      // First call - should hit API
+      await client.getCustomer('cust_123');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Advance time by 61s (past 60s TTL)
+      vi.advanceTimersByTime(61000);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          name: 'Updated Customer',
+          email: 'test@example.com',
+          taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
+          createdAt: '2026-02-12T10:00:00Z',
+          updatedAt: '2026-02-12T11:00:00Z',
+        }),
+      });
+
+      // Second call after cache expiry - should refetch from API
+      await client.getCustomer('cust_123');
+      expect(mockFetch).toHaveBeenCalledTimes(2); // New API call made
     });
   });
 

@@ -215,15 +215,29 @@ export class WooviClient {
   }
 
   async getCustomer(idOrEmail: string): Promise<Customer> {
+    const cacheKey = `customer:${idOrEmail}`;
+
+    // Check cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    let response;
     if (idOrEmail.includes('@')) {
       // Email query
       const email = encodeURIComponent(idOrEmail);
-      return await this.makeRequest('GET', `/api/v1/customer/?email=${email}`);
+      response = await this.makeRequest('GET', `/api/v1/customer/?email=${email}`);
     } else {
       // ID path param
       const id = encodeURIComponent(idOrEmail);
-      return await this.makeRequest('GET', `/api/v1/customer/${id}`);
+      response = await this.makeRequest('GET', `/api/v1/customer/${id}`);
     }
+
+    // Cache for 60 seconds
+    this.cache.set(cacheKey, response, 60000);
+
+    return response;
   }
 
   async listCustomers(filters?: { search?: string; skip?: number; limit?: number }): Promise<PaginatedResult<Customer>> {
