@@ -47,7 +47,7 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
 
         const result = await wooviClient.listTransactions(filters);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -69,7 +69,7 @@ export function registerTransactionTools(mcpServer: McpServer, wooviClient: Woov
       try {
         const result = await wooviClient.getBalance();
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
