@@ -71,7 +71,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
         };
         const result = await wooviClient.createCharge(chargeData as any);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -93,7 +93,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
       try {
         const result = await wooviClient.getCharge(args.correlationID);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -115,14 +115,14 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
       try {
         const filters = {
           ...(args.status && { status: args.status }),
-          ...(args.startDate && { startDate: args.startDate }),
-          ...(args.endDate && { endDate: args.endDate }),
+          ...(args.startDate && { startDate: new Date(args.startDate) }),
+          ...(args.endDate && { endDate: new Date(args.endDate) }),
           ...(args.skip !== undefined && { skip: args.skip }),
           ...(args.limit !== undefined && { limit: args.limit }),
         };
         const result = await wooviClient.listCharges(filters);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
