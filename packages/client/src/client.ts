@@ -88,10 +88,14 @@ export class WooviClient {
             throw new Error(`Auth error: ${response.status}`);
           }
 
-          // 429: retry with exponential backoff
+          // 429: retry with exponential backoff or Retry-After header
           if (response.status === 429 && attempt < maxRetries) {
-            const delay = baseDelays[attempt] ?? 5000;
-            this.logger.warn('Rate limited (429), retrying', { attempt: attempt + 1, delayMs: delay, path });
+            // Check for Retry-After header (in seconds)
+            const retryAfterHeader = response.headers.get('Retry-After');
+            const delay = retryAfterHeader 
+              ? parseInt(retryAfterHeader, 10) * 1000  // Convert seconds to milliseconds
+              : (baseDelays[attempt] ?? 5000);
+            this.logger.warn('Rate limited (429), retrying', { attempt: attempt + 1, delayMs: delay, path, retryAfter: retryAfterHeader });
             await this.sleep(delay);
             attempt++;
             continue;

@@ -104,16 +104,19 @@ describe('WooviClient', () => {
         .mockResolvedValueOnce({
           ok: false,
           status: 429,
+          headers: { get: () => null },
           json: async () => ({ error: 'Rate limit exceeded' }),
         })
         .mockResolvedValueOnce({
           ok: false,
           status: 429,
+          headers: { get: () => null },
           json: async () => ({ error: 'Rate limit exceeded' }),
         })
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => ({ success: true }),
         });
 
@@ -144,12 +147,14 @@ describe('WooviClient', () => {
           return Promise.resolve({
             ok: false,
             status: 429,
+            headers: { get: () => null },
             json: async () => ({ error: 'Rate limited' }),
           });
         }
         return Promise.resolve({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => ({ result: 'ok' }),
         });
       });
@@ -173,6 +178,7 @@ describe('WooviClient', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 429,
+        headers: { get: () => null },
         json: async () => ({ error: 'Rate limited' }),
       });
 
@@ -196,6 +202,7 @@ describe('WooviClient', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 429,
+        headers: { get: () => null },
         json: async () => ({ error: 'Rate limit exceeded' }),
       });
 
@@ -219,6 +226,7 @@ describe('WooviClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        headers: { get: () => null },
         json: async () => ({ error: 'Internal server error' }),
       });
 
