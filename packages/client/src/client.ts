@@ -270,12 +270,22 @@ export class WooviClient {
     const endpoint = accountId ? `/api/v1/account/${accountId}` : '/api/v1/account/';
     const response = await this.makeRequest('GET', endpoint);
 
-    // Extract balance from response
-    const balance = response.balance || response;
-
-    if (!balance) {
-      this.logger.warn('Balance not found in response', { response });
+    // Extract account from response.accounts array
+    let account;
+    if (accountId) {
+      // Find specific account by ID
+      account = response.accounts?.find((a: any) => a.accountId === accountId);
+    } else {
+      // Find default account or use first
+      account = response.accounts?.find((a: any) => a.isDefault) || response.accounts?.[0];
     }
+
+    if (!account || !account.balance) {
+      this.logger.warn('Account or balance not found in response', { response });
+      throw new Error('No account found or balance data unavailable');
+    }
+
+    const balance = account.balance;
 
     // Cache for 60 seconds
     this.cache.set(cacheKey, balance, 60000);
