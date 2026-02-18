@@ -138,11 +138,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          balance: {
-            total: 100000,
-            blocked: 20000,
-            available: 80000,
-          },
+          accounts: [
+            {
+              accountId: 'acc_default',
+              isDefault: true,
+              balance: {
+                total: 100000,
+                blocked: 20000,
+                available: 80000,
+              },
+            },
+          ],
         }),
       });
 
@@ -160,11 +166,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          balance: {
-            total: 100000,
-            blocked: 20000,
-            available: 80000,
-          },
+          accounts: [
+            {
+              accountId: 'account-123',
+              isDefault: false,
+              balance: {
+                total: 100000,
+                blocked: 20000,
+                available: 80000,
+              },
+            },
+          ],
         }),
       });
 
@@ -181,11 +193,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          balance: {
-            total: 150000,
-            blocked: 50000,
-            available: 100000,
-          },
+          accounts: [
+            {
+              accountId: 'acc_default',
+              isDefault: true,
+              balance: {
+                total: 150000,
+                blocked: 50000,
+                available: 100000,
+              },
+            },
+          ],
         }),
       });
 
@@ -204,11 +222,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          balance: {
-            total: 100000,
-            blocked: 20000,
-            available: 80000,
-          },
+          accounts: [
+            {
+              accountId: 'acc_default',
+              isDefault: true,
+              balance: {
+                total: 100000,
+                blocked: 20000,
+                available: 80000,
+              },
+            },
+          ],
         }),
       });
 
@@ -226,11 +250,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          balance: {
-            total: 100000,
-            blocked: 20000,
-            available: 80000,
-          },
+          accounts: [
+            {
+              accountId: 'acc_default',
+              isDefault: true,
+              balance: {
+                total: 100000,
+                blocked: 20000,
+                available: 80000,
+              },
+            },
+          ],
         }),
       });
 
@@ -245,11 +275,17 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          balance: {
-            total: 110000,
-            blocked: 10000,
-            available: 100000,
-          },
+          accounts: [
+            {
+              accountId: 'acc_default',
+              isDefault: true,
+              balance: {
+                total: 110000,
+                blocked: 10000,
+                available: 100000,
+              },
+            },
+          ],
         }),
       });
 

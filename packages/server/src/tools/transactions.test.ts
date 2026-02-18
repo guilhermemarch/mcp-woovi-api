@@ -286,7 +286,7 @@ describe('Transaction Tools', () => {
       expect(() => schema.parse({})).not.toThrow();
     });
 
-    it('should call wooviClient.getBalance() with no arguments', async () => {
+     it('should call wooviClient.getBalance() with no arguments', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -295,8 +295,9 @@ describe('Transaction Tools', () => {
       };
 
       const mockGetBalance = vi.fn().mockResolvedValue({
-        available: 100000,
-        pending: 5000,
+        total: 100000,
+        blocked: 5000,
+        available: 95000,
       });
 
       const mockClient = {
@@ -311,7 +312,7 @@ describe('Transaction Tools', () => {
       expect(mockGetBalance).toHaveBeenCalledWith();
     });
 
-    it('should return MCP-compliant response format with balance data', async () => {
+     it('should return MCP-compliant response format with balance data', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -321,8 +322,9 @@ describe('Transaction Tools', () => {
 
       const mockClient = {
         getBalance: vi.fn().mockResolvedValue({
-          available: 100000,
-          pending: 5000,
+          total: 100000,
+          blocked: 5000,
+          available: 95000,
         }),
       };
 
@@ -339,7 +341,7 @@ describe('Transaction Tools', () => {
       expect(result.content[0].text).toContain('5000');
     });
 
-    it('should return balance in centavos', async () => {
+     it('should return balance in centavos', async () => {
       const registeredTools: any[] = [];
       const mockServer = {
         registerTool: vi.fn((name, config, handler) => {
@@ -349,8 +351,9 @@ describe('Transaction Tools', () => {
 
       const mockClient = {
         getBalance: vi.fn().mockResolvedValue({
+          total: 50000,
+          blocked: 0,
           available: 50000,
-          pending: 0,
         }),
       };
 
