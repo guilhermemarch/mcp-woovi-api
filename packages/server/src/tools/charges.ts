@@ -44,6 +44,7 @@ const listChargesInputSchema = z.object({
   endDate: z.string().optional().describe('End date filter (ISO 8601 format)'),
   skip: z.number().optional().describe('Number of records to skip for pagination'),
   limit: z.number().optional().describe('Maximum number of records to return'),
+  customer: z.string().optional().describe('Filter by Customer CorrelationID'),
 });
 type ListChargesInput = z.infer<typeof listChargesInputSchema>;
 
@@ -119,6 +120,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
           ...(args.endDate && { endDate: new Date(args.endDate) }),
           ...(args.skip !== undefined && { skip: args.skip }),
           ...(args.limit !== undefined && { limit: args.limit }),
+          ...(args.customer && { customer: args.customer }),
         };
         const result = await wooviClient.listCharges(filters);
         return {
