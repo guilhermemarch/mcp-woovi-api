@@ -150,7 +150,7 @@ describe('Resource Registration', () => {
       expect(webhooksResource.uri).toBe('woovi://webhook-schemas');
       expect(webhooksResource.title).toBe('Woovi Webhook Schemas');
       expect(webhooksResource.mimeType).toBe('application/json');
-      expect(webhooksResource.description).toContain('charge_completed');
+      expect(webhooksResource.description).toContain('OPENPIX:CHARGE_CREATED');
     });
 
     it('should return JSON schema when resource is read', async () => {
@@ -178,10 +178,13 @@ describe('Resource Registration', () => {
       const schema = JSON.parse(result.contents[0].text);
       const eventEnum = schema.properties.event.enum;
       
-      expect(eventEnum).toContain('charge_completed');
-      expect(eventEnum).toContain('transaction_received');
-      expect(eventEnum).toContain('charge_created');
-      expect(eventEnum).toContain('refund_completed');
+      expect(eventEnum).toContain('OPENPIX:CHARGE_CREATED');
+      expect(eventEnum).toContain('OPENPIX:CHARGE_COMPLETED');
+      expect(eventEnum).toContain('OPENPIX:CHARGE_EXPIRED');
+      expect(eventEnum).toContain('OPENPIX:TRANSACTION_RECEIVED');
+      expect(eventEnum).toContain('OPENPIX:TRANSACTION_REFUND_RECEIVED');
+      expect(eventEnum).toContain('OPENPIX:MOVEMENT_CONFIRMED');
+      expect(eventEnum).toHaveLength(6);
     });
 
     it('should define proper JSON Schema structure with required fields', async () => {
@@ -208,7 +211,7 @@ describe('Resource Registration', () => {
       const schema = JSON.parse(result.contents[0].text);
       expect(schema.examples).toBeDefined();
       expect(schema.examples.length).toBeGreaterThan(0);
-      expect(schema.examples[0].event).toBe('charge_completed');
+      expect(schema.examples[0].event).toBe('OPENPIX:CHARGE_COMPLETED');
     });
   });
 
