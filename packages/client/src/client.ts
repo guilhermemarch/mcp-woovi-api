@@ -159,26 +159,6 @@ export class WooviClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // @ts-ignore - accessed via string key in tests
-  private maskTaxID(value: string): string {
-    if (value.length <= 3) {
-      return value;
-    }
-
-    const visiblePart = value.slice(-3);
-    return '*'.repeat(7) + visiblePart;
-  }
-
-  // @ts-ignore - accessed via string key in tests
-  private maskPhone(value: string): string {
-    if (value.length <= 4) {
-      return value;
-    }
-
-    const visiblePart = value.slice(-4);
-    return '*'.repeat(7) + visiblePart;
-  }
-
   async createCharge(data: ChargeInput): Promise<Charge> {
     return await this.makeRequest('POST', '/api/v1/charge?return_existing=true', data);
   }
