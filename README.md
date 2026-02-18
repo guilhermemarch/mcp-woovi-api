@@ -112,7 +112,7 @@ See [TOOLS.md](TOOLS.md) for the complete tool catalog with input schemas and de
 - **Transactions**: `get_transactions`, `get_balance`
 - **Refunds**: `create_refund`, `get_refund`
 
-## 📚 Documentation
+## Documentation
 
 - [**Architecture**](docs/architecture/README.md) - System design and patterns
 - [**Tools Reference**](docs/tools/README.md) - Full list of available tools
