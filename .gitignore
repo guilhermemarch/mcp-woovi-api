@@ -42,3 +42,8 @@ node_modules/.vite/
 
 # Temporary tool artifacts
 .sisyphus/
+
+# Local Dev Scripts
+scripts/
+packages/teste.ts
+test-sandbox.ts
