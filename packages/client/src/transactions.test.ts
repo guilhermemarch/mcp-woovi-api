@@ -127,8 +127,8 @@ describe('WooviClient Transaction Methods', () => {
       await client.listTransactions({ startDate, endDate });
 
       const callUrl = mockFetch.mock.calls[0][0];
-      expect(callUrl).toContain('startDate');
-      expect(callUrl).toContain('endDate');
+      expect(callUrl).toContain('start');
+      expect(callUrl).toContain('end');
     });
   });
 

@@ -256,12 +256,13 @@ export class WooviClient {
       limit: String(limit),
     });
 
+    // Note: API uses 'start'/'end' params per official spec
     if (filters?.startDate) {
-      params.set('startDate', filters.startDate.toISOString());
+      params.set('start', filters.startDate.toISOString());
     }
 
     if (filters?.endDate) {
-      params.set('endDate', filters.endDate.toISOString());
+      params.set('end', filters.endDate.toISOString());
     }
 
     const response = await this.makeRequest('GET', `/api/v1/transaction?${params.toString()}`);
