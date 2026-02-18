@@ -31,7 +31,7 @@ export function registerRefundTools(mcpServer: McpServer, wooviClient: WooviClie
         };
         const result = await wooviClient.createRefund(refundData as any);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -53,7 +53,7 @@ export function registerRefundTools(mcpServer: McpServer, wooviClient: WooviClie
       try {
         const result = await wooviClient.getRefund(args.refundID);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
