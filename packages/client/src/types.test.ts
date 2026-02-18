@@ -63,28 +63,20 @@ describe('Type Definitions', () => {
   });
 
   describe('TaxID', () => {
-    it('should represent CPF as object', () => {
+    it('should represent CPF as string in input', () => {
       const customer: CustomerInput = {
         name: 'John',
-        taxID: {
-          taxID: '12345678901',
-          type: 'BR:CPF',
-        },
+        taxID: '12345678901',
       };
-      expect(customer.taxID!.type).toBe('BR:CPF');
-      expect(customer.taxID!.taxID).toBe('12345678901');
+      expect(customer.taxID).toBe('12345678901');
     });
 
-    it('should represent CNPJ as object', () => {
+    it('should represent CNPJ as string in input', () => {
       const customer: CustomerInput = {
         name: 'Company',
-        taxID: {
-          taxID: '12345678901234',
-          type: 'BR:CNPJ',
-        },
+        taxID: '12345678901234',
       };
-      expect(customer.taxID!.type).toBe('BR:CNPJ');
-      expect(customer.taxID!.taxID).toBe('12345678901234');
+      expect(customer.taxID).toBe('12345678901234');
     });
   });
 
@@ -124,12 +116,12 @@ describe('Type Definitions', () => {
     it('should have all required fields', () => {
       const transaction: Transaction = {
         value: 5000,
-        type: 'DEBIT',
-        status: 'COMPLETED',
+        type: 'PAYMENT',
+        status: 'CONFIRMED',
         createdAt: '2026-02-12T10:00:00Z',
       };
       expect(transaction.value).toBe(5000);
-      expect(transaction.type).toBe('DEBIT');
+      expect(transaction.type).toBe('PAYMENT');
     });
   });
 
@@ -151,6 +143,7 @@ describe('Type Definitions', () => {
       const refund: RefundInput = {
         correlationID: 'refund-corr-1',
         value: 5000,
+        transactionEndToEndId: 'e2e-1',
       };
       expect(refund.correlationID).toBe('refund-corr-1');
       expect(refund.value).toBe(5000);
@@ -160,6 +153,7 @@ describe('Type Definitions', () => {
       const refund: RefundInput = {
         correlationID: 'refund-corr-2',
         value: 5000,
+        transactionEndToEndId: 'e2e-2',
         comment: 'Customer request',
       };
       expect(refund.comment).toBe('Customer request');
@@ -171,13 +165,13 @@ describe('Type Definitions', () => {
       const refund: Refund = {
         correlationID: 'refund-corr-1',
         value: 5000,
-        status: 'COMPLETED',
+        status: 'CONFIRMED',
         comment: 'Customer request',
         createdAt: '2026-02-12T10:00:00Z',
       };
       expect(refund.correlationID).toBe('refund-corr-1');
       expect(refund.value).toBe(5000);
-      expect(refund.status).toBe('COMPLETED');
+      expect(refund.status).toBe('CONFIRMED');
     });
   });
 

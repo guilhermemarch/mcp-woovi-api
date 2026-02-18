@@ -62,7 +62,7 @@ export interface CustomerInput {
   name: string;
   email?: string;
   phone?: string;
-  taxID?: TaxID;
+  taxID?: string;
   correlationID?: string;
 }
 
@@ -78,9 +78,11 @@ export interface Customer {
 
 export interface Transaction {
   value: number;
-  type: string;
-  status: string;
+  type: 'PAYMENT' | 'WITHDRAW' | 'REFUND' | 'FEE';
+  status: 'CREATED' | 'CONFIRMED' | 'REFUNDED' | 'DENIED';
   correlationID?: string;
+  endToEndID?: string;
+  time?: string;
   createdAt: string;
 }
 
@@ -106,7 +108,7 @@ export interface RefundInput {
 export interface Refund {
   correlationID: string;
   value: number;
-  status: string;
+  status: 'IN_PROCESSING' | 'CONFIRMED' | 'REJECTED';
   comment?: string;
   createdAt: string;
 }
