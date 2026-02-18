@@ -301,10 +301,12 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 201,
         json: async () => ({
-          correlationID: 'refund-corr-1',
-          value: 5000,
-          status: 'PENDING',
-          createdAt: '2026-02-12T10:00:00Z',
+          refund: {
+            correlationID: 'refund-corr-1',
+            value: 5000,
+            status: 'PENDING',
+            createdAt: '2026-02-12T10:00:00Z',
+          },
         }),
       });
 
@@ -333,11 +335,13 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 201,
         json: async () => ({
-          correlationID: 'refund-corr-2',
-          value: 10000,
-          status: 'COMPLETED',
-          comment: 'Duplicate payment',
-          createdAt: '2026-02-12T10:00:00Z',
+          refund: {
+            correlationID: 'refund-corr-2',
+            value: 10000,
+            status: 'COMPLETED',
+            comment: 'Duplicate payment',
+            createdAt: '2026-02-12T10:00:00Z',
+          },
         }),
       });
 
@@ -359,10 +363,12 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          correlationID: refundId,
-          value: 5000,
-          status: 'COMPLETED',
-          createdAt: '2026-02-12T10:00:00Z',
+          pixTransactionRefund: {
+            correlationID: refundId,
+            value: 5000,
+            status: 'COMPLETED',
+            createdAt: '2026-02-12T10:00:00Z',
+          },
         }),
       });
 
@@ -381,10 +387,12 @@ describe('WooviClient Transaction Methods', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          correlationID: refundIdWithSpecialChars,
-          value: 5000,
-          status: 'COMPLETED',
-          createdAt: '2026-02-12T10:00:00Z',
+          pixTransactionRefund: {
+            correlationID: refundIdWithSpecialChars,
+            value: 5000,
+            status: 'COMPLETED',
+            createdAt: '2026-02-12T10:00:00Z',
+          },
         }),
       });
 

@@ -334,7 +334,8 @@ export class WooviClient {
   }
 
   async createRefund(data: RefundInput): Promise<Refund> {
-    return await this.makeRequest('POST', '/api/v1/refund', data);
+    const response = await this.makeRequest('POST', '/api/v1/refund', data);
+    return response.refund;
   }
 
   async createChargeRefund(chargeID: string, data: ChargeRefundInput): Promise<any> {
@@ -344,6 +345,7 @@ export class WooviClient {
 
   async getRefund(refundId: string): Promise<Refund> {
     const encodedId = encodeURIComponent(refundId);
-    return await this.makeRequest('GET', `/api/v1/refund/${encodedId}`);
+    const response = await this.makeRequest('GET', `/api/v1/refund/${encodedId}`);
+    return response.pixTransactionRefund;
   }
 }
