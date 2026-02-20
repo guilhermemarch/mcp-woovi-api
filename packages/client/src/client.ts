@@ -199,13 +199,13 @@ export class WooviClient {
     const response = await this.makeRequest('GET', `/api/v1/charge?${params.toString()}`);
 
     return {
-      items: response.charges || response.items || [],
-      pageInfo: response.pageInfo || {
+      items: response.charges || [],
+      pageInfo: {
         skip,
         limit,
-        totalCount: response.totalCount || 0,
-        hasPreviousPage: skip > 0,
-        hasNextPage: response.hasNextPage || false,
+        totalCount: response.pageInfo.totalCount,
+        hasPreviousPage: response.pageInfo.hasPreviousPage,
+        hasNextPage: response.pageInfo.hasNextPage,
       },
     };
   }
@@ -255,13 +255,13 @@ export class WooviClient {
     const response = await this.makeRequest('GET', `/api/v1/customer?${params.toString()}`);
 
     return {
-      items: response.customers || response.items || [],
-      pageInfo: response.pageInfo || {
+      items: response.customers || [],
+      pageInfo: {
         skip,
         limit,
-        totalCount: response.totalCount || 0,
-        hasPreviousPage: skip > 0,
-        hasNextPage: response.hasNextPage || false,
+        totalCount: response.pageInfo.totalCount,
+        hasPreviousPage: response.pageInfo.hasPreviousPage,
+        hasNextPage: response.pageInfo.hasNextPage,
       },
     };
   }
@@ -286,14 +286,8 @@ export class WooviClient {
     const response = await this.makeRequest('GET', `/api/v1/transaction?${params.toString()}`);
 
     return {
-      items: response.transactions || response.items || [],
-      pageInfo: response.pageInfo || {
-        skip,
-        limit,
-        totalCount: response.totalCount || 0,
-        hasPreviousPage: skip > 0,
-        hasNextPage: response.hasNextPage || false,
-      },
+      items: response.transactions,
+      pageInfo: response.pageInfo,
     };
   }
 
@@ -338,7 +332,7 @@ export class WooviClient {
     return response.refund;
   }
 
-  async createChargeRefund(chargeID: string, data: ChargeRefundInput): Promise<any> {
+  async createChargeRefund(chargeID: string, data: ChargeRefundInput): Promise<Refund> {
     const response = await this.makeRequest('POST', `/api/v1/charge/${chargeID}/refund`, data);
     return response.refund;
   }
@@ -346,6 +340,6 @@ export class WooviClient {
   async getRefund(refundId: string): Promise<Refund> {
     const encodedId = encodeURIComponent(refundId);
     const response = await this.makeRequest('GET', `/api/v1/refund/${encodedId}`);
-    return response.pixTransactionRefund;
+    return response.refund;
   }
 }
