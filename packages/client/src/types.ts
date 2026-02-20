@@ -6,7 +6,7 @@ export interface TaxID {
 export interface ChargeInput {
   value: number;
   correlationID: string;
-  type?: 'DYNAMIC' | 'OVERDUE' | 'BOLETO';
+  type?: 'DYNAMIC' | 'OVERDUE';
   comment?: string;
   customer?: {
     name: string;
@@ -32,30 +32,25 @@ export interface ChargeInput {
 export interface Charge {
   value: number;
   correlationID: string;
-  identifier: string;
-  transactionID: string;
   status: 'ACTIVE' | 'COMPLETED' | 'EXPIRED';
   brCode: string;
   paymentLinkUrl: string;
   qrCodeImage: string;
-  pixKey: string;
   expiresDate: string;
-  type: string;
-  globalID: string;
   customer?: Customer;
   additionalInfo?: { key: string; value: string }[];
-  redirectUrl?: string;
-  discountSettings?: {
-    modality: 'fixed' | 'percentage';
-    amount: number;
-  };
-  splits?: {
-    pixKey: string;
-    splitType: 'fixed' | 'percentage';
-    amount: number;
-  }[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Address {
+  zipcode?: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
 export interface CustomerInput {
@@ -64,6 +59,7 @@ export interface CustomerInput {
   phone?: string;
   taxID?: string;
   correlationID?: string;
+  address?: Address;
 }
 
 export interface Customer {
@@ -106,11 +102,12 @@ export interface RefundInput {
 }
 
 export interface Refund {
+  refundId: string;
   correlationID: string;
   value: number;
-  status: 'IN_PROCESSING' | 'CONFIRMED' | 'REJECTED';
+  status: 'IN_PROCESSING' | 'CONFIRMED' | 'REJECTED' | 'COMPLETED';
   comment?: string;
-  createdAt: string;
+  time: string;
 }
 
 export interface PageInfo {
