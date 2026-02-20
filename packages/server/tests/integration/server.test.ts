@@ -62,21 +62,21 @@ describe('MCP Server Integration Tests', () => {
     it('should return exactly 10 tools', async () => {
       const response = await client.listTools();
       expect(response.tools).toBeDefined();
-      expect(response.tools.length).toBe(10);
+      expect(response.tools.length).toBe(11);
     });
-
+  
     it('should include charge tools', async () => {
       const response = await client.listTools();
       const chargeTools = response.tools.filter(t => t.name.includes('charge'));
-      expect(chargeTools.length).toBe(3);
+      expect(chargeTools.length).toBe(4);
     });
-
+  
     it('should include customer tools', async () => {
       const response = await client.listTools();
       const customerTools = response.tools.filter(t => t.name.includes('customer'));
       expect(customerTools.length).toBe(3);
     });
-
+  
     it('should include transaction tools', async () => {
       const response = await client.listTools();
       const transactionTools = response.tools.filter(t =>
@@ -84,11 +84,11 @@ describe('MCP Server Integration Tests', () => {
       );
       expect(transactionTools.length).toBe(2);
     });
-
+  
     it('should include refund tools', async () => {
       const response = await client.listTools();
       const refundTools = response.tools.filter(t => t.name.includes('refund'));
-      expect(refundTools.length).toBe(2);
+      expect(refundTools.length).toBe(3);
     });
   });
 
