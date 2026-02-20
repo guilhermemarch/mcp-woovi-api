@@ -6,7 +6,7 @@ import { maskSensitiveData } from '../utils/masking.js';
 const createChargeInputSchema = z.object({
   value: z.number().describe('Charge value in centavos (e.g. 5000 = R$ 50.00)'),
   correlationID: z.string().describe('Unique identifier for this charge (UUID recommended)'),
-  type: z.enum(['DYNAMIC', 'OVERDUE', 'BOLETO']).optional().describe('Charge type (default: DYNAMIC)'),
+  type: z.enum(['DYNAMIC', 'OVERDUE']).optional().describe('Charge type (default: DYNAMIC)'),
   comment: z.string().optional().describe('Internal comment for this charge'),
   customer: z.object({
     name: z.string(),
@@ -87,7 +87,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
   mcpServer.registerTool(
     'get_charge',
     {
-      description: 'Retrieve charge details by correlation ID. Returns complete charge information including status, value, brCode, QR code, and payment link.',
+      description: 'Retrieve charge details by correlation ID. Returns complete charge information including status (ACTIVE/COMPLETED/EXPIRED), value in centavos, brCode (copy/paste QR code), QR code image URL, and payment link. Example: get_charge(correlationID: "abc-123-def") returns charge with status "ACTIVE" and brCode "00020126..."',
       inputSchema: getChargeInputSchema as any,
     },
     async (args: GetChargeInput) => {
@@ -109,7 +109,7 @@ export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClie
   mcpServer.registerTool(
     'list_charges',
     {
-      description: 'List charges with optional filters. Supports pagination (skip/limit), status filtering (ACTIVE/COMPLETED/EXPIRED), and date range. Returns paginated results.',
+      description: 'List charges with optional filters. Supports pagination (skip/limit), status filtering (ACTIVE/COMPLETED/EXPIRED), date range (startDate/endDate), and customer filtering by correlation ID. Returns paginated results with pageInfo (skip, limit, totalCount, hasPreviousPage, hasNextPage). Example: list_charges(status: "ACTIVE", limit: 10) returns first 10 active charges.',
       inputSchema: listChargesInputSchema as any,
     },
     async (args: ListChargesInput) => {
