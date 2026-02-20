@@ -1,3 +1,5 @@
+import { maskSensitiveData } from './masking.js';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const LEVEL_ORDER: Record<LogLevel, number> = {
@@ -30,12 +32,15 @@ export class Logger {
     private emit(level: LogLevel, message: string, data?: Record<string, unknown>): void {
         if (!this.shouldLog(level)) return;
 
+        // Mask sensitive data before logging
+        const maskedData = data ? (maskSensitiveData(data) as Record<string, unknown>) : undefined;
+
         const entry: LogEntry = {
             timestamp: new Date().toISOString(),
             level,
             component: this.component,
             message,
-            ...data,
+            ...maskedData,
         };
 
         // Always write logs to stderr to avoid interfering with stdio MCP transport
