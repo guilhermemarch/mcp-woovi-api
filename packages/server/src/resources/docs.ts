@@ -1,104 +1,68 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createMarkdownResourceContents } from '../utils/resource-handler.js';
 
 const ENDPOINTS_DOCUMENTATION = `# Woovi API Endpoints
 
-Complete reference of available Woovi API endpoints.
+Reference for the Woovi/OpenPix API subset implemented in this repository.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/v1/charge | Create a new charge (Pix payment request) |
-| GET | /api/v1/charge/{id} | Get a specific charge by correlation ID |
-| GET | /api/v1/charge/ | List all charges with optional filters |
-| POST | /api/v1/customer | Create a new customer |
-| GET | /api/v1/customer/{id} | Get a specific customer by correlation ID |
-| GET | /api/v1/customer/ | List all customers with optional filters |
-| GET | /api/v1/transaction/ | List all transactions with optional filters |
-| GET | /api/v1/account/ | Get current account balance information |
-| POST | /api/v1/charge/{id}/refund | Create a refund for a specific charge |
-| GET | /api/v1/refund/{id} | Get a specific refund by correlation ID |
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | /api/v1/charge | Create Pix charge |
+| GET | /api/v1/charge/{id} | Fetch charge |
+| GET | /api/v1/charge | List charges |
+| POST | /api/v1/customer | Create customer |
+| GET | /api/v1/customer/{id} | Fetch customer |
+| GET | /api/v1/customer | List customers |
+| GET | /api/v1/transaction | List transactions |
+| GET | /api/v1/account/ | Fetch default account balance |
+| GET | /api/v1/account/{accountId} | Fetch balance for a specific account |
+| POST | /api/v1/refund | Create refund from transaction end-to-end ID |
+| POST | /api/v1/charge/{id}/refund | Create refund from a charge |
+| GET | /api/v1/refund/{id} | Fetch refund |
 
-## Charge Endpoints
+## Behavioral notes
 
-### Create Charge
-- **POST** \`/api/v1/charge\`
-- Creates a new Pix payment request
-- Amount values are in centavos (5000 = R$ 50.00)
-- Returns charge details including QR code and Pix copy-paste code
-
-### Get Charge
-- **GET** \`/api/v1/charge/{id}\`
-- Retrieves details of a specific charge
-- Use the charge's correlation ID as the identifier
-
-### List Charges
-- **GET** \`/api/v1/charge/\`
-- Lists all charges with optional filtering
-- Supports filters: status, startDate, endDate, pagination
-
-## Customer Endpoints
-
-### Create Customer
-- **POST** \`/api/v1/customer\`
-- Creates a new customer record
-- Required fields: name
-- Optional fields: email, phone, taxID
-
-### Get Customer
-- **GET** \`/api/v1/customer/{id}\`
-- Retrieves details of a specific customer
-- Use the customer's correlation ID as the identifier
-
-### List Customers
-- **GET** \`/api/v1/customer/\`
-- Lists all customers with optional filtering
-- Supports pagination with skip and limit parameters
-
-## Transaction Endpoints
-
-### List Transactions
-- **GET** \`/api/v1/transaction/\`
-- Lists all transactions
-- Supports filtering by charge, startDate, endDate
-- Includes pagination support
-
-## Account Endpoints
-
-### Get Balance
-- **GET** \`/api/v1/account/\`
-- Retrieves current account balance information
-- Returns available balance and total amount
-- Balance data is cached for 60 seconds
-
-## Refund Endpoints
-
-### Create Refund
-- **POST** \`/api/v1/charge/{id}/refund\`
-- Creates a refund for a completed charge
-- Specify refund amount and optional correlation ID
-
-### Get Refund
-- **GET** \`/api/v1/refund/{id}\`
-- Retrieves details of a specific refund
-- Use the refund's correlation ID as the identifier
+- All currency values are in centavos.
+- \`create_customer\` requires \`name\` and at least one of \`taxID\`, \`email\`, or \`phone\`.
+- \`get_balance\` supports optional \`accountId\`.
+- \`create_refund\` supports either \`chargeID\` or \`transactionEndToEndId\`.
+- The client retries \`429\` responses with backoff.
+- Customer reads and tool-driven balance reads are cached for 60 seconds in the reusable client package.
+- The \`woovi://balance/current\` and \`woovi://balance/{accountId}\` resources bypass cache to expose real-time balance snapshots.
 
 ## Authentication
 
-All endpoints require authentication using the Woovi API key in the Authorization header:
+The client supports:
 
-\`\`\`
-Authorization: appID
-\`\`\`
+- \`Authorization: <appId>\` when \`WOOVI_AUTH_MODE=raw\`
+- \`Authorization: Bearer <token>\` when \`WOOVI_AUTH_MODE=bearer\`
 
-## Response Format
+## MCP-specific additions
 
-All endpoints return JSON responses with consistent structure:
-- Success responses include data in the response body
-- Error responses include error messages and appropriate HTTP status codes
-
-## Rate Limiting
-
-The API implements rate limiting to ensure service stability. Monitor response headers for rate limit information.
+- The HTTP transport requires \`MCP_HTTP_AUTH_TOKEN\`.
+- \`POST /webhooks/events\` is only exposed when \`WOOVI_WEBHOOK_INGRESS_TOKEN\` is configured.
+- Resource templates:
+  - \`woovi://balance/{accountId}\`
+  - \`woovi://docs/{endpoint}\`
+- Bonus tools:
+  - \`list_accounts\`
+  - \`get_charge_analytics\`
+  - \`get_customer_payment_summary\`
 `;
+
+const ENDPOINT_SNIPPETS: Record<string, string> = {
+  create_charge: 'POST /api/v1/charge?return_existing=true\nFields: correlationID, value, comment, customer, additionalInfo.',
+  get_charge: 'GET /api/v1/charge/{id}\nAccepts a charge ID or correlationID and returns { charge }.',
+  list_charges: 'GET /api/v1/charge\nSupports status, start, end, customer, subscription, skip, limit.',
+  create_customer: 'POST /api/v1/customer\nFields: name, taxID, email, phone, correlationID, address.',
+  get_customer: 'GET /api/v1/customer/{id}\nAccepts a customer correlationID or taxID and returns { customer }.',
+  list_customers: 'GET /api/v1/customer\nReturns { customers, pageInfo }. This project also applies an optional local search filter over the fetched customer page.',
+  get_transactions: 'GET /api/v1/transaction\nSupports start, end, charge, pixQrCode, withdrawal, skip, limit.',
+  get_balance: 'GET /api/v1/account/ or GET /api/v1/account/{accountId}\nReturns account balance snapshot; MCP balance resources bypass client cache.',
+  create_refund: 'POST /api/v1/refund or POST /api/v1/charge/{id}/refund depending on provided identifiers.',
+  get_refund: 'GET /api/v1/refund/{id}\nAccepts refund ID or correlationID.',
+};
 
 export function registerDocsResource(mcpServer: McpServer) {
   mcpServer.registerResource(
@@ -106,17 +70,36 @@ export function registerDocsResource(mcpServer: McpServer) {
     'woovi://docs/endpoints',
     {
       title: 'Woovi API Endpoints',
-      description: 'Complete documentation of all available Woovi API endpoints',
+      description: 'Reference documentation for the Woovi/OpenPix API subset exposed by this MCP server.',
       mimeType: 'text/markdown',
     },
     async (uri) => {
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: 'text/markdown',
-          text: ENDPOINTS_DOCUMENTATION,
-        }],
-      };
+      return createMarkdownResourceContents(uri.href, ENDPOINTS_DOCUMENTATION);
+    }
+  );
+
+  mcpServer.registerResource(
+    'endpoint_docs',
+    new ResourceTemplate('woovi://docs/{endpoint}', {
+      list: undefined,
+      complete: {
+        endpoint: async () => Object.keys(ENDPOINT_SNIPPETS),
+      },
+    }),
+    {
+      title: 'Endpoint Documentation Snippet',
+      description: 'Per-endpoint Woovi API documentation snippets for the tools exposed by this MCP server.',
+      mimeType: 'text/markdown',
+    },
+    async (uri, variables) => {
+      const endpoint = String(variables['endpoint']);
+      const snippet = ENDPOINT_SNIPPETS[endpoint];
+      return createMarkdownResourceContents(
+        uri.href,
+        snippet
+          ? `# ${endpoint}\n\n${snippet}`
+          : `# ${endpoint}\n\nNo documentation snippet is registered for this endpoint.`,
+      );
     }
   );
 }
