@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import type { WooviClient } from '@woovi/client';
+import type { Address, WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { maskSensitiveData } from '../utils/masking.js';
+import { registerZodTool } from '../utils/mcp-registration.js';
+import { createJsonToolHandler } from '../utils/tool-handler.js';
 
 const createCustomerInputSchema = z.object({
   name: z.string().describe('Customer full name'),
@@ -13,12 +14,25 @@ const createCustomerInputSchema = z.object({
     .describe('Brazilian tax ID (CPF: 11 digits, CNPJ: 14 digits)'),
   email: z.string().email().optional().describe('Customer email address'),
   phone: z.string().optional().describe('Customer phone number'),
-  metadata: z.record(z.any()).optional().describe('Additional custom fields'),
-});
+  correlationID: z.string().optional().describe('Optional external correlation ID for the customer'),
+  address: z.object({
+    zipcode: z.string().optional(),
+    street: z.string().optional(),
+    number: z.string().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+  }).optional().describe('Optional customer address'),
+}).refine(
+  (value) => Boolean(value.taxID || value.email || value.phone),
+  'Provide at least one of: taxID, email, or phone'
+);
 type CreateCustomerInput = z.infer<typeof createCustomerInputSchema>;
 
 const getCustomerInputSchema = z.object({
-  idOrEmail: z.string().describe('Customer ID or email address (auto-detected)'),
+  customerId: z.string().describe('Customer correlation ID or tax ID'),
 });
 type GetCustomerInput = z.infer<typeof getCustomerInputSchema>;
 
@@ -29,97 +43,70 @@ const listCustomersInputSchema = z.object({
 });
 type ListCustomersInput = z.infer<typeof listCustomersInputSchema>;
 
+function normalizeAddress(address?: CreateCustomerInput['address']): Address | undefined {
+  if (!address) {
+    return undefined;
+  }
+
+  return {
+    ...(address.zipcode && { zipcode: address.zipcode }),
+    ...(address.street && { street: address.street }),
+    ...(address.number && { number: address.number }),
+    ...(address.complement && { complement: address.complement }),
+    ...(address.neighborhood && { neighborhood: address.neighborhood }),
+    ...(address.city && { city: address.city }),
+    ...(address.state && { state: address.state }),
+    ...(address.country && { country: address.country }),
+  };
+}
+
 export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviClient) {
-  mcpServer.registerTool(
+  registerZodTool(
+    mcpServer,
     'create_customer',
     {
       description: 'Create a new customer in the Woovi platform. Requires name and at least one of: taxID, email, or phone. TaxID must be valid Brazilian CPF (11 digits) or CNPJ (14 digits). Returns complete customer object including generated ID, creation timestamp, and all provided fields.',
-      inputSchema: createCustomerInputSchema as any,
+      inputSchema: createCustomerInputSchema,
     },
-    async (args: CreateCustomerInput) => {
-      try {
-        const customerData: { name: string; email?: string; phone?: string; metadata?: Record<string, unknown>; taxID?: { taxID: string; type: string } } = {
-          name: args.name,
-          ...(args.email && { email: args.email }),
-          ...(args.phone && { phone: args.phone }),
-          ...(args.metadata && { metadata: args.metadata }),
-        };
+    createJsonToolHandler('create_customer', async (args: CreateCustomerInput) => {
+      const address = normalizeAddress(args.address);
 
-        if (args.taxID) {
-          const type = args.taxID.length === 11 ? 'BR:CPF' : 'BR:CNPJ';
-          customerData.taxID = {
-            taxID: args.taxID,
-            type,
-          };
-        }
-
-        const result = await wooviClient.createCustomer(customerData as any);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text' as const, text: `Error: ${message}` }],
-          isError: true,
-        };
-      }
-    }
+      return await wooviClient.createCustomer({
+        name: args.name,
+        ...(args.email && { email: args.email }),
+        ...(args.phone && { phone: args.phone }),
+        ...(args.correlationID && { correlationID: args.correlationID }),
+        ...(args.taxID && { taxID: args.taxID }),
+        ...(address && { address }),
+      });
+    }),
   );
 
-  mcpServer.registerTool(
+  registerZodTool(
+    mcpServer,
     'get_customer',
     {
-      description: 'Retrieve customer details by ID or email. Smart detection automatically routes to correct endpoint based on input format. Email detection: contains \'@\' symbol. Returns complete customer object with all fields including masked taxID for security.',
-      inputSchema: getCustomerInputSchema as any,
+      description: 'Retrieve customer details by correlation ID or tax ID using the official Woovi customer lookup endpoint. Returns the complete customer object with sensitive fields masked in the MCP response.',
+      inputSchema: getCustomerInputSchema,
     },
-    async (args: GetCustomerInput) => {
-      try {
-        const result = await wooviClient.getCustomer(args.idOrEmail);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text' as const, text: `Error: ${message}` }],
-          isError: true,
-        };
-      }
-    }
+    createJsonToolHandler('get_customer', async (args: GetCustomerInput) => {
+      return await wooviClient.getCustomer(args.customerId);
+    }),
   );
 
-  mcpServer.registerTool(
+  registerZodTool(
+    mcpServer,
     'list_customers',
     {
-      description: 'List all customers with optional search and pagination. Search filters by name, email, or taxID. Pagination uses offset-based skip/limit pattern. Returns paginated results with totalCount and hasNextPage flag.',
-      inputSchema: listCustomersInputSchema as any,
+      description: 'List customers with pagination and an optional search string. Pagination uses offset-based skip/limit. Search is applied by this MCP server over the fetched customer page using name, email, phone, correlationID, or taxID.',
+      inputSchema: listCustomersInputSchema,
     },
-    async (args: ListCustomersInput) => {
-      try {
-        const filters: { search?: string; skip?: number; limit?: number } = {};
-
-        if (args.search !== undefined) {
-          filters.search = args.search;
-        }
-        if (args.skip !== undefined) {
-          filters.skip = args.skip;
-        }
-        if (args.limit !== undefined) {
-          filters.limit = args.limit;
-        }
-
-        const result = await wooviClient.listCustomers(filters);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) }],
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text' as const, text: `Error: ${message}` }],
-          isError: true,
-        };
-      }
-    }
+    createJsonToolHandler('list_customers', async (args: ListCustomersInput) => {
+      return await wooviClient.listCustomers({
+        ...(args.search !== undefined && { search: args.search }),
+        ...(args.skip !== undefined && { skip: args.skip }),
+        ...(args.limit !== undefined && { limit: args.limit }),
+      });
+    }),
   );
 }
