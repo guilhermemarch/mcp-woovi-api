@@ -1,0 +1,519 @@
+{
+  "info": {
+    "_postman_id": "e1c67e52-2a6e-4e8e-9362-a0e58061c4ac",
+    "name": "Woovi API Coverage Used By MCP Server",
+    "description": "Postman collection aligned with the actual endpoints and query/body shapes used by the Woovi client in this repository. Defaults to the Woovi sandbox environment required by the challenge.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.woovi-sandbox.com"
+    },
+    {
+      "key": "appId",
+      "value": "your-app-id-here"
+    },
+    {
+      "key": "chargeCorrelationId",
+      "value": "charge-123"
+    },
+    {
+      "key": "customerId",
+      "value": "customer-123"
+    },
+    {
+      "key": "customerEmail",
+      "value": "customer@example.com"
+    },
+    {
+      "key": "accountId",
+      "value": "account-123"
+    },
+    {
+      "key": "refundId",
+      "value": "refund-123"
+    },
+    {
+      "key": "transactionEndToEndId",
+      "value": "E12345678901234567890123456789012"
+    }
+  ],
+  "item": [
+    {
+      "name": "Charges",
+      "item": [
+        {
+          "name": "Create Charge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 5000,\n  \"correlationID\": \"{{chargeCorrelationId}}\",\n  \"comment\": \"Charge created from Postman\",\n  \"customer\": {\n    \"name\": \"Example Customer\",\n    \"email\": \"{{customerEmail}}\",\n    \"phone\": \"11999999999\",\n    \"taxID\": \"12345678901\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/charge?return_existing=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "charge"
+              ],
+              "query": [
+                {
+                  "key": "return_existing",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:createCharge."
+          }
+        },
+        {
+          "name": "Get Charge",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/charge/{{chargeCorrelationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "charge",
+                "{{chargeCorrelationId}}"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:getCharge."
+          }
+        },
+        {
+          "name": "List Charges",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/charge?skip=0&limit=10&status=ACTIVE&start=2026-01-01T00:00:00.000Z&end=2026-01-31T23:59:59.999Z&customer={{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "charge"
+              ],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE"
+                },
+                {
+                  "key": "start",
+                  "value": "2026-01-01T00:00:00.000Z"
+                },
+                {
+                  "key": "end",
+                  "value": "2026-01-31T23:59:59.999Z"
+                },
+                {
+                  "key": "customer",
+                  "value": "{{customerId}}"
+                }
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:listCharges. Note the query names are start/end, not startDate/endDate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"phone\": \"11999999999\",\n  \"taxID\": \"12345678901\",\n  \"correlationID\": \"cust-correlation-123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customer"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:createCustomer."
+          }
+        },
+        {
+          "name": "Get Customer By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customer/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customer",
+                "{{customerId}}"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:getCustomer when the argument is not an email."
+          }
+        },
+        {
+          "name": "Get Customer By Identifier",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customer/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customer",
+                "{{customerId}}"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:getCustomer using the documented identifier path (correlationID or taxID)."
+          }
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customer?skip=0&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customer"
+              ],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Matches the upstream request used by packages/client/src/client.ts:listCustomers. The optional MCP `search` filter is applied locally after this paginated fetch."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions And Balance",
+      "item": [
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transaction?skip=0&limit=10&start=2026-01-01T00:00:00.000Z&end=2026-01-31T23:59:59.999Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transaction"
+              ],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "start",
+                  "value": "2026-01-01T00:00:00.000Z"
+                },
+                {
+                  "key": "end",
+                  "value": "2026-01-31T23:59:59.999Z"
+                }
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:listTransactions."
+          }
+        },
+        {
+          "name": "List Accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                ""
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:listAccounts. This is the same upstream endpoint used by getBalance() when accountId is omitted."
+          }
+        },
+        {
+          "name": "Get Default Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                ""
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:getBalance without accountId. The client extracts the default account balance from the /api/v1/account/ response."
+          }
+        },
+        {
+          "name": "Get Balance By Account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "{{accountId}}"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:getBalance with accountId."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Refunds",
+      "item": [
+        {
+          "name": "Create Standalone Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correlationID\": \"refund-correlation-123\",\n  \"value\": 500,\n  \"transactionEndToEndId\": \"{{transactionEndToEndId}}\",\n  \"comment\": \"Partial refund\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "refund"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:createRefund."
+          }
+        },
+        {
+          "name": "Create Charge Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 500,\n  \"correlationID\": \"charge-refund-correlation-123\",\n  \"description\": \"Refund generated from Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/charge/{{chargeCorrelationId}}/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "charge",
+                "{{chargeCorrelationId}}",
+                "refund"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:createChargeRefund."
+          }
+        },
+        {
+          "name": "Get Refund",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{appId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refund/{{refundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "refund",
+                "{{refundId}}"
+              ]
+            },
+            "description": "Matches packages/client/src/client.ts:getRefund."
+          }
+        }
+      ]
+    }
+  ]
+}
