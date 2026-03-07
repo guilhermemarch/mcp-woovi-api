@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createJsonResourceContents } from '../utils/resource-handler.js';
 
 const WEBHOOK_SCHEMAS = {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12,9 +13,31 @@ const WEBHOOK_SCHEMAS = {
         "OPENPIX:CHARGE_CREATED",
         "OPENPIX:CHARGE_COMPLETED",
         "OPENPIX:CHARGE_EXPIRED",
+        "OPENPIX:CHARGE_COMPLETED_NOT_SAME_CUSTOMER_PAYER",
         "OPENPIX:TRANSACTION_RECEIVED",
         "OPENPIX:TRANSACTION_REFUND_RECEIVED",
-        "OPENPIX:MOVEMENT_CONFIRMED"
+        "PIX_TRANSACTION_REFUND_RECEIVED_CONFIRMED",
+        "PIX_TRANSACTION_REFUND_SENT_CONFIRMED",
+        "PIX_TRANSACTION_REFUND_RECEIVED_REJECTED",
+        "PIX_TRANSACTION_REFUND_SENT_REJECTED",
+        "OPENPIX:MOVEMENT_CONFIRMED",
+        "OPENPIX:MOVEMENT_FAILED",
+        "OPENPIX:MOVEMENT_REMOVED",
+        "OPENPIX:DISPUTE_CREATED",
+        "OPENPIX:DISPUTE_ACCEPTED",
+        "OPENPIX:DISPUTE_REJECTED",
+        "OPENPIX:DISPUTE_CANCELED",
+        "ACCOUNT_REGISTER_APPROVED",
+        "ACCOUNT_REGISTER_REJECTED",
+        "ACCOUNT_REGISTER_PENDING",
+        "PIX_AUTOMATIC_APPROVED",
+        "PIX_AUTOMATIC_REJECTED",
+        "PIX_AUTOMATIC_COBR_CREATED",
+        "PIX_AUTOMATIC_COBR_APPROVED",
+        "PIX_AUTOMATIC_COBR_REJECTED",
+        "PIX_AUTOMATIC_COBR_TRY_REJECTED",
+        "PIX_AUTOMATIC_COBR_TRY_REQUESTED",
+        "PIX_AUTOMATIC_COBR_COMPLETED"
       ],
       "description": "The type of webhook event"
     },
@@ -221,17 +244,11 @@ export function registerWebhooksResource(mcpServer: McpServer) {
     'woovi://webhook-schemas',
     {
       title: 'Woovi Webhook Schemas',
-      description: 'JSON Schema definitions for Woovi webhook event payloads (OPENPIX:CHARGE_CREATED, OPENPIX:CHARGE_COMPLETED, OPENPIX:CHARGE_EXPIRED, OPENPIX:TRANSACTION_RECEIVED, OPENPIX:TRANSACTION_REFUND_RECEIVED, OPENPIX:MOVEMENT_CONFIRMED)',
+      description: 'JSON Schema definitions for Woovi webhook event payloads, including charge, refund, movement, dispute, account register, and Pix Automatic events.',
       mimeType: 'application/json',
     },
     async (uri) => {
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: 'application/json',
-          text: JSON.stringify(WEBHOOK_SCHEMAS, null, 2),
-        }],
-      };
+      return createJsonResourceContents(uri.href, WEBHOOK_SCHEMAS);
     }
   );
 }
