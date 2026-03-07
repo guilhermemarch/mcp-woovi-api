@@ -1,17 +1,20 @@
 import { SimpleCache } from './cache.js';
 import { Logger } from './logger.js';
-import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund, ChargeRefundInput } from './types.js';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund, ChargeRefundInput, Account, PageInfo } from './types.js';
+import type { LogLevel } from './logger.js';
 
 export interface WooviClientConfig {
   baseUrl?: string;
   timeoutMs?: number;
+  authMode?: 'raw' | 'bearer';
+  logLevel?: LogLevel;
 }
 
 export class WooviApiError extends Error {
   statusCode: number;
-  errorBody?: any;
+  errorBody?: unknown;
 
-  constructor(message: string, statusCode: number, errorBody?: any) {
+  constructor(message: string, statusCode: number, errorBody?: unknown) {
     super(message);
     this.name = 'WooviApiError';
     this.statusCode = statusCode;
@@ -19,13 +22,41 @@ export class WooviApiError extends Error {
   }
 }
 
+interface ApiErrorItem {
+  message?: string;
+  [key: string]: unknown;
+}
+
+interface ApiErrorResponse {
+  error?: string | ApiErrorItem[];
+  errors?: ApiErrorItem[];
+  [key: string]: unknown;
+}
+
+interface AccountsResponse {
+  accounts?: Account[];
+  pageInfo?: PageInfo;
+}
+
+interface AccountResponse {
+  account?: Account;
+}
+
+interface ChargeResponse {
+  charge?: Charge;
+}
+
+interface GetBalanceOptions {
+  bypassCache?: boolean;
+}
+
 export class WooviClient {
   private appId: string;
   private baseUrl: string;
   private timeoutMs: number;
   private logger: Logger;
-  // @ts-ignore - accessed via string key in tests
-  private cache: SimpleCache<string, any>;
+  private authMode: 'raw' | 'bearer';
+  private cache: SimpleCache<string, unknown>;
 
   constructor(appId: string, configOrBaseUrl?: string | WooviClientConfig) {
     if (!appId || appId.trim() === '') {
@@ -33,26 +64,29 @@ export class WooviClient {
     }
 
     this.appId = appId;
+    let logLevel: LogLevel = 'info';
 
     if (typeof configOrBaseUrl === 'string') {
       this.baseUrl = configOrBaseUrl;
       this.timeoutMs = 30_000;
+      this.authMode = 'raw';
     } else {
       this.baseUrl = configOrBaseUrl?.baseUrl || 'https://api.woovi.com';
       this.timeoutMs = configOrBaseUrl?.timeoutMs ?? 30_000;
+      this.authMode = configOrBaseUrl?.authMode ?? 'raw';
+      logLevel = configOrBaseUrl?.logLevel ?? 'info';
     }
 
     this.cache = new SimpleCache();
-    this.logger = new Logger('WooviClient', 'info');
+    this.logger = new Logger('WooviClient', logLevel);
     this.logger.info('Client initialized', { baseUrl: this.baseUrl, timeoutMs: this.timeoutMs });
   }
 
-  // @ts-ignore - accessed via string key in tests
-  private async makeRequest(method: string, path: string, body?: any): Promise<any> {
+  private async makeRequest<TResponse = unknown>(method: string, path: string, body?: unknown): Promise<TResponse> {
     const url = `${this.baseUrl}${path}`;
     this.logger.debug('Request started', { method, path });
     const headers: Record<string, string> = {
-      Authorization: this.appId,
+      Authorization: this.authMode === 'bearer' ? `Bearer ${this.appId}` : this.appId,
       'Content-Type': 'application/json',
     };
 
@@ -80,7 +114,7 @@ export class WooviClient {
 
           // Success case
           if (response.ok) {
-            return await response.json();
+            return await response.json() as TResponse;
           }
 
           // 401/403: immediate failure, no retry
@@ -103,10 +137,10 @@ export class WooviClient {
 
           // For 429 at max retries or other errors: parse error body and throw
           let errorMessage = `Request failed with status ${response.status}`;
-          let errorBody: any;
+          let errorBody: ApiErrorResponse | undefined;
 
           try {
-            errorBody = await response.json();
+            errorBody = await response.json() as ApiErrorResponse;
 
             // Format 1: { error: "string" }
             if (typeof errorBody.error === 'string') {
@@ -114,14 +148,14 @@ export class WooviClient {
             }
             // Format 2: { error: [{ message, code?, path? }] }
             else if (Array.isArray(errorBody.error) && errorBody.error.length > 0) {
-              const messages = errorBody.error.map((e: any) => e.message || String(e)).filter(Boolean);
+              const messages = errorBody.error.map((entry) => entry.message || String(entry)).filter(Boolean);
               if (messages.length > 0) {
                 errorMessage = messages.join('; ');
               }
             }
             // Format 3: { errors: [{ message }] }
             else if (Array.isArray(errorBody.errors) && errorBody.errors.length > 0) {
-              const messages = errorBody.errors.map((e: any) => e.message || String(e)).filter(Boolean);
+              const messages = errorBody.errors.map((entry) => entry.message || String(entry)).filter(Boolean);
               if (messages.length > 0) {
                 errorMessage = messages.join('; ');
               }
@@ -164,12 +198,14 @@ export class WooviClient {
   }
 
   async createCharge(data: ChargeInput): Promise<Charge> {
-    return await this.makeRequest('POST', '/api/v1/charge?return_existing=true', data);
+    const response = await this.makeRequest<ChargeResponse & Charge>('POST', '/api/v1/charge?return_existing=true', data);
+    return response.charge ?? response;
   }
 
   async getCharge(correlationID: string): Promise<Charge> {
     const encodedID = encodeURIComponent(correlationID);
-    return await this.makeRequest('GET', `/api/v1/charge/${encodedID}`);
+    const response = await this.makeRequest<ChargeResponse & Charge>('GET', `/api/v1/charge/${encodedID}`);
+    return response.charge ?? response;
   }
 
   async listCharges(filters?: { skip?: number; limit?: number; status?: string; startDate?: Date; endDate?: Date; customer?: string }): Promise<PaginatedResult<Charge>> {
@@ -196,7 +232,7 @@ export class WooviClient {
       params.set('customer', filters.customer);
     }
 
-    const response = await this.makeRequest('GET', `/api/v1/charge?${params.toString()}`);
+    const response = await this.makeRequest<{ charges?: Charge[]; pageInfo: PageInfo }>('GET', `/api/v1/charge?${params.toString()}`);
 
     return {
       items: response.charges || [],
@@ -211,33 +247,34 @@ export class WooviClient {
   }
 
   async createCustomer(data: CustomerInput): Promise<Customer> {
-    return await this.makeRequest('POST', '/api/v1/customer', data);
+    const normalizedPayload = {
+      ...data,
+      ...(data.taxID && {
+        taxID: typeof data.taxID === 'string' ? data.taxID : data.taxID.taxID,
+      }),
+    };
+
+    const response = await this.makeRequest<{ customer?: Customer } & Customer>('POST', '/api/v1/customer', normalizedPayload);
+    return response.customer ?? response;
   }
 
-  async getCustomer(idOrEmail: string): Promise<Customer> {
-    const cacheKey = `customer:${idOrEmail}`;
+  async getCustomer(customerId: string): Promise<Customer> {
+    const cacheKey = `customer:${customerId}`;
 
     // Check cache first
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cache.get(cacheKey) as Customer | undefined;
     if (cached) {
       return cached;
     }
 
-    let response;
-    if (idOrEmail.includes('@')) {
-      // Email query
-      const email = encodeURIComponent(idOrEmail);
-      response = await this.makeRequest('GET', `/api/v1/customer/?email=${email}`);
-    } else {
-      // ID path param
-      const id = encodeURIComponent(idOrEmail);
-      response = await this.makeRequest('GET', `/api/v1/customer/${id}`);
-    }
+    const id = encodeURIComponent(customerId);
+    const response = await this.makeRequest<{ customer?: Customer } & Customer>('GET', `/api/v1/customer/${id}`);
 
     // Cache for 60 seconds
-    this.cache.set(cacheKey, response, 60000);
+    const customer = response.customer ?? response;
+    this.cache.set(cacheKey, customer, 60000);
 
-    return response;
+    return customer;
   }
 
   async listCustomers(filters?: { search?: string; skip?: number; limit?: number }): Promise<PaginatedResult<Customer>> {
@@ -248,20 +285,32 @@ export class WooviClient {
       limit: String(limit),
     });
 
-    if (filters?.search) {
-      params.set('search', filters.search);
-    }
+    const response = await this.makeRequest<{ customers?: Customer[]; pageInfo: PageInfo }>('GET', `/api/v1/customer?${params.toString()}`);
+    const customers = response.customers || [];
+    const normalizedSearch = filters?.search?.trim().toLowerCase();
+    const filteredCustomers = normalizedSearch
+      ? customers.filter((customer) => {
+          const haystacks = [
+            customer.name,
+            customer.email,
+            customer.phone,
+            customer.correlationID,
+            customer.taxID?.taxID,
+          ];
 
-    const response = await this.makeRequest('GET', `/api/v1/customer?${params.toString()}`);
+          return haystacks.some((value) => value?.toLowerCase().includes(normalizedSearch));
+        })
+      : customers;
+    const totalCount = normalizedSearch ? filteredCustomers.length : response.pageInfo.totalCount;
 
     return {
-      items: response.customers || [],
+      items: filteredCustomers,
       pageInfo: {
         skip,
         limit,
-        totalCount: response.pageInfo.totalCount,
-        hasPreviousPage: response.pageInfo.hasPreviousPage,
-        hasNextPage: response.pageInfo.hasNextPage,
+        totalCount,
+        hasPreviousPage: normalizedSearch ? false : response.pageInfo.hasPreviousPage,
+        hasNextPage: normalizedSearch ? false : response.pageInfo.hasNextPage,
       },
     };
   }
@@ -283,7 +332,7 @@ export class WooviClient {
       params.set('end', filters.endDate.toISOString());
     }
 
-    const response = await this.makeRequest('GET', `/api/v1/transaction?${params.toString()}`);
+    const response = await this.makeRequest<{ transactions: Transaction[]; pageInfo: PageInfo }>('GET', `/api/v1/transaction?${params.toString()}`);
 
     return {
       items: response.transactions,
@@ -291,27 +340,29 @@ export class WooviClient {
     };
   }
 
-  async getBalance(accountId?: string): Promise<Balance> {
+  async listAccounts(): Promise<Account[]> {
+    const response = await this.makeRequest<AccountsResponse>('GET', '/api/v1/account/');
+    return response.accounts ?? [];
+  }
+
+  async getBalance(accountId?: string, options?: GetBalanceOptions): Promise<Balance> {
     const cacheKey = `balance:${accountId || 'default'}`;
 
-    // Check cache first
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
-      return cached;
+    if (!options?.bypassCache) {
+      const cached = this.cache.get(cacheKey) as Balance | undefined;
+      if (cached) {
+        return cached;
+      }
     }
 
-    // Make API request
     const endpoint = accountId ? `/api/v1/account/${accountId}` : '/api/v1/account/';
-    const response = await this.makeRequest('GET', endpoint);
+    const response = await this.makeRequest<(AccountsResponse & AccountResponse)>('GET', endpoint);
 
-    // Extract account from response.accounts array
     let account;
     if (accountId) {
-      // Find specific account by ID
-      account = response.accounts?.find((a: any) => a.accountId === accountId);
+      account = response.account ?? response.accounts?.find((candidate) => candidate.accountId === accountId);
     } else {
-      // Find default account or use first
-      account = response.accounts?.find((a: any) => a.isDefault) || response.accounts?.[0];
+      account = response.accounts?.find((candidate) => candidate.isDefault) || response.accounts?.[0];
     }
 
     if (!account || !account.balance) {
@@ -321,25 +372,26 @@ export class WooviClient {
 
     const balance = account.balance;
 
-    // Cache for 60 seconds
-    this.cache.set(cacheKey, balance, 60000);
+    if (!options?.bypassCache) {
+      this.cache.set(cacheKey, balance, 60000);
+    }
 
     return balance;
   }
 
   async createRefund(data: RefundInput): Promise<Refund> {
-    const response = await this.makeRequest('POST', '/api/v1/refund', data);
+    const response = await this.makeRequest<{ refund: Refund }>('POST', '/api/v1/refund', data);
     return response.refund;
   }
 
   async createChargeRefund(chargeID: string, data: ChargeRefundInput): Promise<Refund> {
-    const response = await this.makeRequest('POST', `/api/v1/charge/${chargeID}/refund`, data);
+    const response = await this.makeRequest<{ refund: Refund }>('POST', `/api/v1/charge/${chargeID}/refund`, data);
     return response.refund;
   }
 
   async getRefund(refundId: string): Promise<Refund> {
     const encodedId = encodeURIComponent(refundId);
-    const response = await this.makeRequest('GET', `/api/v1/refund/${encodedId}`);
-    return response.refund;
+    const response = await this.makeRequest<{ refund?: Refund; pixTransactionRefund?: Refund } & Refund>('GET', `/api/v1/refund/${encodedId}`);
+    return response.refund ?? response.pixTransactionRefund ?? response;
   }
 }

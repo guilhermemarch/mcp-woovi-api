@@ -37,9 +37,16 @@ export interface Charge {
   paymentLinkUrl: string;
   qrCodeImage: string;
   expiresDate: string;
+  comment?: string;
+  globalID?: string;
+  paymentLinkID?: string;
+  type?: 'DYNAMIC' | 'OVERDUE';
+  expiresIn?: number;
+  dueDate?: string;
   customer?: Customer;
   additionalInfo?: { key: string; value: string }[];
-  createdAt: string;
+  createdAt?: string;
+  time?: string;
   updatedAt: string;
 }
 
@@ -47,6 +54,7 @@ export interface Address {
   zipcode?: string;
   street?: string;
   number?: string;
+  complement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
@@ -57,7 +65,7 @@ export interface CustomerInput {
   name: string;
   email?: string;
   phone?: string;
-  taxID?: string;
+  taxID?: string | TaxID;
   correlationID?: string;
   address?: Address;
 }
@@ -68,7 +76,9 @@ export interface Customer {
   phone?: string;
   taxID?: TaxID;
   correlationID?: string;
-  createdAt: string;
+  address?: Address;
+  createdAt?: string;
+  time?: string;
   updatedAt: string;
 }
 
@@ -77,15 +87,34 @@ export interface Transaction {
   type: 'PAYMENT' | 'WITHDRAW' | 'REFUND' | 'FEE';
   status: 'CREATED' | 'CONFIRMED' | 'REFUNDED' | 'DENIED';
   correlationID?: string;
+  transactionID?: string;
   endToEndID?: string;
+  endToEndId?: string;
+  infoPagador?: string;
+  customer?: Customer;
+  payer?: Customer;
+  charge?: Partial<Charge>;
+  withdraw?: {
+    value?: number;
+    time?: string;
+    infoPagador?: string;
+    endToEndId?: string;
+  };
+  globalID?: string;
   time?: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface Balance {
   total: number;
   blocked: number;
   available: number;
+}
+
+export interface Account {
+  accountId: string;
+  isDefault?: boolean;
+  balance: Balance;
 }
 
 export interface ChargeRefundInput {
@@ -108,6 +137,7 @@ export interface Refund {
   status: 'IN_PROCESSING' | 'CONFIRMED' | 'REJECTED' | 'COMPLETED';
   comment?: string;
   time: string;
+  returnIdentification?: string;
 }
 
 export interface PageInfo {
