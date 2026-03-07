@@ -11,13 +11,21 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "test": "vitest",
+    "typecheck": "pnpm -r exec tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run packages/client/tests/unit packages/server/tests/unit",
+    "test:client:unit": "vitest run packages/client/tests/unit",
+    "test:server:unit": "vitest run packages/server/tests/unit",
+    "test:integration": "vitest run packages/server/tests/integration",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "test:coverage": "vitest --coverage",
-    "dev": "pnpm -r dev",
-    "verify": "npx tsx scripts/verify-mcp.ts",
-    "test:sandbox": "npx tsx scripts/test-sandbox.ts"
+    "test:coverage": "vitest run --coverage",
+    "quality": "pnpm build && pnpm typecheck && pnpm test:coverage && node scripts/verify-challenge.mjs",
+    "dev": "pnpm --filter @woovi/server dev",
+    "start": "pnpm --filter @woovi/server start",
+    "start:stdio": "pnpm --filter @woovi/server start:stdio",
+    "start:http": "pnpm --filter @woovi/server start:http",
+    "verify": "node scripts/verify-challenge.mjs",
+    "verify:build": "pnpm build && node scripts/verify-challenge.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
