@@ -1,18 +1,16 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { Logger } from '@woovi/client';
-import { mcpServer } from './server.js';
+import { startStdioServer } from './transports/stdio.js';
 
-const logger = new Logger('StdioTransport', 'info');
-
-async function main() {
-  const transport = new StdioServerTransport();
-  await mcpServer.connect(transport);
-
-  logger.info('Connected to MCP server via stdio');
-}
-
-main().catch((error) => {
-  logger.error('Fatal error', { error: String(error) });
+startStdioServer().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: 'error',
+    component: 'StdioTransport',
+    message: 'Fatal error',
+    error: message,
+  }) + '\n');
   process.exit(1);
 });
+
+export { startStdioServer } from './transports/stdio.js';
