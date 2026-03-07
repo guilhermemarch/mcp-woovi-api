@@ -3,9 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WooviClient } from '@woovi/client';
-import { registerChargeTools, registerCustomerTools, registerTransactionTools, registerRefundTools } from '../../src/tools/index.js';
-import { registerBalanceResource, registerDocsResource, registerWebhooksResource } from '../../src/resources/index.js';
-import { registerDailySummaryPrompt, registerCustomerReportPrompt, registerReconciliationCheckPrompt } from '../../src/prompts/index.js';
+import { registerMcpCapabilities } from '../../src/mcp/register.js';
 
 describe('MCP Server Integration Tests', () => {
   let client: Client;
@@ -28,18 +26,7 @@ describe('MCP Server Integration Tests', () => {
 
     mockWooviClient = new WooviClient('test-app-id');
 
-    registerChargeTools(server, mockWooviClient);
-    registerCustomerTools(server, mockWooviClient);
-    registerTransactionTools(server, mockWooviClient);
-    registerRefundTools(server, mockWooviClient);
-
-    registerBalanceResource(server, mockWooviClient);
-    registerDocsResource(server);
-    registerWebhooksResource(server);
-
-    registerDailySummaryPrompt(server);
-    registerCustomerReportPrompt(server);
-    registerReconciliationCheckPrompt(server);
+    registerMcpCapabilities(server, mockWooviClient);
 
     await server.connect(serverTransport);
 
@@ -59,21 +46,25 @@ describe('MCP Server Integration Tests', () => {
   });
 
   describe('tools/list', () => {
-    it('should return exactly 10 tools', async () => {
+    it('should return core and bonus tools', async () => {
       const response = await client.listTools();
       expect(response.tools).toBeDefined();
-      expect(response.tools.length).toBe(11);
+      expect(response.tools.length).toBe(13);
     });
   
     it('should include charge tools', async () => {
       const response = await client.listTools();
-      const chargeTools = response.tools.filter(t => t.name.includes('charge'));
-      expect(chargeTools.length).toBe(4);
+      const chargeTools = response.tools.filter(t =>
+        ['create_charge', 'get_charge', 'list_charges'].includes(t.name)
+      );
+      expect(chargeTools.length).toBe(3);
     });
   
     it('should include customer tools', async () => {
       const response = await client.listTools();
-      const customerTools = response.tools.filter(t => t.name.includes('customer'));
+      const customerTools = response.tools.filter(t =>
+        ['create_customer', 'get_customer', 'list_customers'].includes(t.name)
+      );
       expect(customerTools.length).toBe(3);
     });
   
@@ -88,7 +79,15 @@ describe('MCP Server Integration Tests', () => {
     it('should include refund tools', async () => {
       const response = await client.listTools();
       const refundTools = response.tools.filter(t => t.name.includes('refund'));
-      expect(refundTools.length).toBe(3);
+      expect(refundTools.length).toBe(2);
+    });
+
+    it('should include account and analytics bonus tools', async () => {
+      const response = await client.listTools();
+      const toolNames = response.tools.map(t => t.name);
+      expect(toolNames).toContain('list_accounts');
+      expect(toolNames).toContain('get_charge_analytics');
+      expect(toolNames).toContain('get_customer_payment_summary');
     });
   });
 
@@ -115,6 +114,15 @@ describe('MCP Server Integration Tests', () => {
       const response = await client.listResources();
       const webhooksResource = response.resources.find(r => r.name === 'webhook_schemas');
       expect(webhooksResource).toBeDefined();
+    });
+  });
+
+  describe('resource templates/list', () => {
+    it('should expose dynamic resource templates', async () => {
+      const response = await client.listResourceTemplates();
+      expect(response.resourceTemplates.length).toBeGreaterThanOrEqual(2);
+      expect(response.resourceTemplates.some(r => r.name === 'account_balance')).toBe(true);
+      expect(response.resourceTemplates.some(r => r.name === 'endpoint_docs')).toBe(true);
     });
   });
 
@@ -185,8 +193,9 @@ describe('MCP Server Integration Tests', () => {
   describe('resource read', () => {
     it('should read balance resource successfully with mocked WooviClient', async () => {
       const mockGetBalance = vi.fn().mockResolvedValue({
-        balance: 100000,
-        totalAmount: 250000,
+        total: 100000,
+        blocked: 5000,
+        available: 95000,
       });
 
       mockWooviClient.getBalance = mockGetBalance;
@@ -202,7 +211,7 @@ describe('MCP Server Integration Tests', () => {
       const content = response.contents[0];
       if ('text' in content) {
         const data = JSON.parse(content.text);
-        expect(data.balance).toBe(100000);
+        expect(data.total).toBe(100000);
       }
       expect(mockGetBalance).toHaveBeenCalled();
     });
