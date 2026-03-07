@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "woovi": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/mcp-woovi-server-ts/packages/server/dist/stdio.js"
+      ],
+      "env": {
+        "WOOVI_APP_ID": "your-sandbox-app-id",
+        "WOOVI_API_URL": "https://api.woovi-sandbox.com",
+        "WOOVI_LOG_LEVEL": "info",
+        "WOOVI_AUTH_MODE": "raw"
+      }
+    }
+  }
+}
