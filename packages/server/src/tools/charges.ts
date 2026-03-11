@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import type { WooviClient } from '@woovi/client';
+import type { ChargeInput, WooviClient } from '@woovi/client';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { maskSensitiveData } from '../utils/masking.js';
+import { registerZodTool } from '../utils/mcp-registration.js';
+import { createJsonToolHandler } from '../utils/tool-handler.js';
 
 const createChargeInputSchema = z.object({
   value: z.number().describe('Charge value in centavos (e.g. 5000 = R$ 50.00)'),
@@ -48,91 +49,75 @@ const listChargesInputSchema = z.object({
 });
 type ListChargesInput = z.infer<typeof listChargesInputSchema>;
 
+function normalizeChargeCustomer(customer?: CreateChargeInput['customer']): ChargeInput['customer'] {
+  if (!customer) {
+    return undefined;
+  }
+
+  return {
+    name: customer.name,
+    ...(customer.email && { email: customer.email }),
+    ...(customer.phone && { phone: customer.phone }),
+    ...(customer.taxID && { taxID: customer.taxID }),
+  };
+}
+
 export function registerChargeTools(mcpServer: McpServer, wooviClient: WooviClient) {
-  mcpServer.registerTool(
+  registerZodTool(
+    mcpServer,
     'create_charge',
     {
       description: 'Create a new Pix charge. Value is in centavos (5000 = R$ 50.00). correlationID must be unique per charge. Returns charge details including brCode (Pix copy-paste), QR code image URL, and payment link.',
-      inputSchema: createChargeInputSchema as any,
+      inputSchema: createChargeInputSchema,
     },
-    async (args: CreateChargeInput) => {
-      try {
-        const chargeData = {
-          value: args.value,
-          correlationID: args.correlationID,
-          ...(args.type && { type: args.type }),
-          ...(args.comment && { comment: args.comment }),
-          ...(args.customer && { customer: args.customer }),
-          ...(args.expiresIn && { expiresIn: args.expiresIn }),
-          ...(args.additionalInfo && { additionalInfo: args.additionalInfo }),
-          ...(args.redirectUrl && { redirectUrl: args.redirectUrl }),
-          ...(args.ensureSameTaxID && { ensureSameTaxID: args.ensureSameTaxID }),
-          ...(args.discountSettings && { discountSettings: args.discountSettings }),
-          ...(args.splits && { splits: args.splits }),
-        };
-        const result = await wooviClient.createCharge(chargeData as any);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text' as const, text: `Error: ${message}` }],
-          isError: true,
-        };
-      }
-    }
+    createJsonToolHandler('create_charge', async (args: CreateChargeInput) => {
+      const customer = normalizeChargeCustomer(args.customer);
+      const chargeData: ChargeInput = {
+        value: args.value,
+        correlationID: args.correlationID,
+        ...(args.type && { type: args.type }),
+        ...(args.comment && { comment: args.comment }),
+        ...(customer && { customer }),
+        ...(args.expiresIn && { expiresIn: args.expiresIn }),
+        ...(args.additionalInfo && { additionalInfo: args.additionalInfo }),
+        ...(args.redirectUrl && { redirectUrl: args.redirectUrl }),
+        ...(args.ensureSameTaxID && { ensureSameTaxID: args.ensureSameTaxID }),
+        ...(args.discountSettings && { discountSettings: args.discountSettings }),
+        ...(args.splits && { splits: args.splits }),
+      };
+      return await wooviClient.createCharge(chargeData);
+    }),
   );
 
-  mcpServer.registerTool(
+  registerZodTool(
+    mcpServer,
     'get_charge',
     {
       description: 'Retrieve charge details by correlation ID. Returns complete charge information including status (ACTIVE/COMPLETED/EXPIRED), value in centavos, brCode (copy/paste QR code), QR code image URL, and payment link. Example: get_charge(correlationID: "abc-123-def") returns charge with status "ACTIVE" and brCode "00020126..."',
-      inputSchema: getChargeInputSchema as any,
+      inputSchema: getChargeInputSchema,
     },
-    async (args: GetChargeInput) => {
-      try {
-        const result = await wooviClient.getCharge(args.correlationID);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text' as const, text: `Error: ${message}` }],
-          isError: true,
-        };
-      }
-    }
+    createJsonToolHandler('get_charge', async (args: GetChargeInput) => {
+      return await wooviClient.getCharge(args.correlationID);
+    }),
   );
 
-  mcpServer.registerTool(
+  registerZodTool(
+    mcpServer,
     'list_charges',
     {
       description: 'List charges with optional filters. Supports pagination (skip/limit), status filtering (ACTIVE/COMPLETED/EXPIRED), date range (startDate/endDate), and customer filtering by correlation ID. Returns paginated results with pageInfo (skip, limit, totalCount, hasPreviousPage, hasNextPage). Example: list_charges(status: "ACTIVE", limit: 10) returns first 10 active charges.',
-      inputSchema: listChargesInputSchema as any,
+      inputSchema: listChargesInputSchema,
     },
-    async (args: ListChargesInput) => {
-      try {
-        const filters = {
-          ...(args.status && { status: args.status }),
-          ...(args.startDate && { startDate: new Date(args.startDate) }),
-          ...(args.endDate && { endDate: new Date(args.endDate) }),
-          ...(args.skip !== undefined && { skip: args.skip }),
-          ...(args.limit !== undefined && { limit: args.limit }),
-          ...(args.customer && { customer: args.customer }),
-        };
-        const result = await wooviClient.listCharges(filters);
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(maskSensitiveData(result), null, 2) || '{}' }],
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text' as const, text: `Error: ${message}` }],
-          isError: true,
-        };
-      }
-    }
+    createJsonToolHandler('list_charges', async (args: ListChargesInput) => {
+      const filters = {
+        ...(args.status && { status: args.status }),
+        ...(args.startDate && { startDate: new Date(args.startDate) }),
+        ...(args.endDate && { endDate: new Date(args.endDate) }),
+        ...(args.skip !== undefined && { skip: args.skip }),
+        ...(args.limit !== undefined && { limit: args.limit }),
+        ...(args.customer && { customer: args.customer }),
+      };
+      return await wooviClient.listCharges(filters);
+    }),
   );
 }

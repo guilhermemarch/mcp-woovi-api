@@ -1,50 +1,73 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WooviClient, Logger } from '@woovi/client';
-import { registerChargeTools, registerCustomerTools, registerTransactionTools, registerRefundTools } from './tools/index.js';
-import { registerBalanceResource, registerDocsResource, registerWebhooksResource } from './resources/index.js';
-import { registerDailySummaryPrompt, registerCustomerReportPrompt, registerReconciliationCheckPrompt } from './prompts/index.js';
+import { Logger, WooviClient } from '@woovi/client';
+import type { ServerConfig } from './core/config.js';
+import { loadServerConfig } from './core/config.js';
+import { WebhookEventBus } from './core/event-bus.js';
+import { registerMcpCapabilities } from './mcp/register.js';
 
-const logger = new Logger('McpServer', 'info');
-
-const appId = process.env['WOOVI_APP_ID'];
-if (!appId) {
-  logger.error('WOOVI_APP_ID environment variable is required');
-  process.exit(1);
+export interface WooviMcpRuntime {
+  config: ServerConfig;
+  logger: Logger;
+  wooviClient: WooviClient;
+  mcpServer: McpServer;
+  eventBus: WebhookEventBus;
 }
 
-// Production: https://api.woovi.com
-// Sandbox: https://api.woovi-sandbox.com
-const baseUrl = process.env['WOOVI_API_URL'] || 'https://api.woovi.com';
+export interface CreateWooviMcpServerOptions {
+  config: ServerConfig;
+  logger?: Logger;
+  wooviClient?: WooviClient;
+  eventBus?: WebhookEventBus;
+}
 
-export const wooviClient = new WooviClient(appId, baseUrl);
+export function createWooviMcpServer(options: CreateWooviMcpServerOptions): WooviMcpRuntime {
+  const logger = options.logger ?? new Logger('McpServer', options.config.logLevel);
+  const wooviClient = options.wooviClient ?? new WooviClient(options.config.appId, {
+    baseUrl: options.config.baseUrl,
+    authMode: options.config.authMode,
+    logLevel: options.config.logLevel,
+  });
+  const eventBus = options.eventBus ?? new WebhookEventBus();
 
-export const mcpServer = new McpServer({
-  name: 'woovi-mcp-server',
-  version: '1.0.0',
-}, {
-  capabilities: {
-    tools: {},
-    resources: {},
-    prompts: {},
-  },
-});
+  const mcpServer = new McpServer({
+    name: options.config.serverName,
+    version: options.config.serverVersion,
+  }, {
+    capabilities: {
+      tools: {},
+      resources: {},
+      prompts: {},
+    },
+  });
 
-registerChargeTools(mcpServer, wooviClient);
-registerCustomerTools(mcpServer, wooviClient);
-registerTransactionTools(mcpServer, wooviClient);
-registerRefundTools(mcpServer, wooviClient);
+  registerMcpCapabilities(mcpServer, wooviClient);
 
-registerBalanceResource(mcpServer, wooviClient);
-registerDocsResource(mcpServer);
-registerWebhooksResource(mcpServer);
+  logger.info('MCP server initialized', {
+    tools: 13,
+    resources: 3,
+    resourceTemplates: 2,
+    prompts: 3,
+    baseUrl: options.config.baseUrl,
+    authMode: options.config.authMode,
+  });
 
-registerDailySummaryPrompt(mcpServer);
-registerCustomerReportPrompt(mcpServer);
-registerReconciliationCheckPrompt(mcpServer);
+  return {
+    config: options.config,
+    logger,
+    wooviClient,
+    mcpServer,
+    eventBus,
+  };
+}
 
-logger.info('MCP Server initialized', {
-  tools: 10,
-  resources: 3,
-  prompts: 3,
-  baseUrl,
-});
+let runtimeSingleton: WooviMcpRuntime | null = null;
+
+export function getConfiguredServer(env: NodeJS.ProcessEnv = process.env): WooviMcpRuntime {
+  if (!runtimeSingleton) {
+    runtimeSingleton = createWooviMcpServer({
+      config: loadServerConfig(env),
+    });
+  }
+
+  return runtimeSingleton;
+}
