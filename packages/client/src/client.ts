@@ -1,6 +1,6 @@
 import { SimpleCache } from './cache.js';
 import { Logger } from './logger.js';
-import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, Balance, RefundInput, Refund, ChargeRefundInput, Account, PageInfo } from './types.js';
+import type { ChargeInput, Charge, CustomerInput, Customer, PaginatedResult, Transaction, RefundInput, Refund, ChargeRefundInput, Account, PageInfo } from './types.js';
 import type { LogLevel } from './logger.js';
 
 export interface WooviClientConfig {
@@ -48,6 +48,32 @@ interface ChargeResponse {
 
 interface GetBalanceOptions {
   bypassCache?: boolean;
+}
+
+interface ListCustomersFilters {
+  search?: string;
+  skip?: number;
+  limit?: number;
+}
+
+interface ListChargesFilters {
+  skip?: number;
+  limit?: number;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+  customer?: string;
+  subscription?: string;
+}
+
+interface ListTransactionsFilters {
+  skip?: number;
+  limit?: number;
+  startDate?: Date;
+  endDate?: Date;
+  charge?: string;
+  pixQrCode?: string;
+  withdrawal?: string;
 }
 
 export class WooviClient {
@@ -197,6 +223,31 @@ export class WooviClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  private normalizeCustomerSearch(value?: string): string | undefined {
+    const normalized = value?.trim().toLowerCase();
+    return normalized ? normalized : undefined;
+  }
+
+  private matchesCustomerSearch(customer: Customer, search: string): boolean {
+    const haystacks = [
+      customer.name,
+      customer.email,
+      customer.phone,
+      customer.correlationID,
+      customer.taxID?.taxID,
+    ];
+
+    return haystacks.some((value) => value?.toLowerCase().includes(search));
+  }
+
+  private pickAccountFromResponse(response: AccountsResponse & AccountResponse, accountId?: string): Account | undefined {
+    if (accountId) {
+      return response.account ?? response.accounts?.find((candidate) => candidate.accountId === accountId);
+    }
+
+    return response.account ?? response.accounts?.find((candidate) => candidate.isDefault) ?? response.accounts?.[0];
+  }
+
   async createCharge(data: ChargeInput): Promise<Charge> {
     const response = await this.makeRequest<ChargeResponse & Charge>('POST', '/api/v1/charge?return_existing=true', data);
     return response.charge ?? response;
@@ -208,7 +259,7 @@ export class WooviClient {
     return response.charge ?? response;
   }
 
-  async listCharges(filters?: { skip?: number; limit?: number; status?: string; startDate?: Date; endDate?: Date; customer?: string }): Promise<PaginatedResult<Charge>> {
+  async listCharges(filters?: ListChargesFilters): Promise<PaginatedResult<Charge>> {
     const skip = filters?.skip ?? 0;
     const limit = filters?.limit ?? 10;
     const params = new URLSearchParams({
@@ -230,6 +281,10 @@ export class WooviClient {
 
     if (filters?.customer) {
       params.set('customer', filters.customer);
+    }
+
+    if (filters?.subscription) {
+      params.set('subscription', filters.subscription);
     }
 
     const response = await this.makeRequest<{ charges?: Charge[]; pageInfo: PageInfo }>('GET', `/api/v1/charge?${params.toString()}`);
@@ -277,45 +332,73 @@ export class WooviClient {
     return customer;
   }
 
-  async listCustomers(filters?: { search?: string; skip?: number; limit?: number }): Promise<PaginatedResult<Customer>> {
+  async listCustomers(filters?: ListCustomersFilters): Promise<PaginatedResult<Customer>> {
     const skip = filters?.skip ?? 0;
     const limit = filters?.limit ?? 10;
-    const params = new URLSearchParams({
-      skip: String(skip),
-      limit: String(limit),
-    });
+    const normalizedSearch = this.normalizeCustomerSearch(filters?.search);
 
-    const response = await this.makeRequest<{ customers?: Customer[]; pageInfo: PageInfo }>('GET', `/api/v1/customer?${params.toString()}`);
-    const customers = response.customers || [];
-    const normalizedSearch = filters?.search?.trim().toLowerCase();
-    const filteredCustomers = normalizedSearch
-      ? customers.filter((customer) => {
-          const haystacks = [
-            customer.name,
-            customer.email,
-            customer.phone,
-            customer.correlationID,
-            customer.taxID?.taxID,
-          ];
+    if (!normalizedSearch) {
+      const params = new URLSearchParams({
+        skip: String(skip),
+        limit: String(limit),
+      });
 
-          return haystacks.some((value) => value?.toLowerCase().includes(normalizedSearch));
-        })
-      : customers;
-    const totalCount = normalizedSearch ? filteredCustomers.length : response.pageInfo.totalCount;
+      const response = await this.makeRequest<{ customers?: Customer[]; pageInfo: PageInfo }>('GET', `/api/v1/customer?${params.toString()}`);
+
+      return {
+        items: response.customers || [],
+        pageInfo: {
+          skip,
+          limit,
+          totalCount: response.pageInfo.totalCount,
+          hasPreviousPage: response.pageInfo.hasPreviousPage,
+          hasNextPage: response.pageInfo.hasNextPage,
+        },
+      };
+    }
+
+    const upstreamPageSize = Math.max(limit, 100);
+    const matchedCustomers: Customer[] = [];
+    let totalMatches = 0;
+    let hasNextPage = true;
+    let cursor = 0;
+
+    while (hasNextPage) {
+      const params = new URLSearchParams({
+        skip: String(cursor),
+        limit: String(upstreamPageSize),
+      });
+
+      const response = await this.makeRequest<{ customers?: Customer[]; pageInfo: PageInfo }>('GET', `/api/v1/customer?${params.toString()}`);
+      const customers = response.customers || [];
+      const pageMatches = customers.filter((customer) => this.matchesCustomerSearch(customer, normalizedSearch));
+
+      matchedCustomers.push(...pageMatches);
+      totalMatches += pageMatches.length;
+
+      hasNextPage = response.pageInfo.hasNextPage;
+      if (!hasNextPage) {
+        break;
+      }
+
+      cursor += response.pageInfo.limit || upstreamPageSize;
+    }
+
+    const paginatedMatches = matchedCustomers.slice(skip, skip + limit);
 
     return {
-      items: filteredCustomers,
+      items: paginatedMatches,
       pageInfo: {
         skip,
         limit,
-        totalCount,
-        hasPreviousPage: normalizedSearch ? false : response.pageInfo.hasPreviousPage,
-        hasNextPage: normalizedSearch ? false : response.pageInfo.hasNextPage,
+        totalCount: totalMatches,
+        hasPreviousPage: skip > 0,
+        hasNextPage: skip + limit < totalMatches || hasNextPage,
       },
     };
   }
 
-  async listTransactions(filters?: { skip?: number; limit?: number; startDate?: Date; endDate?: Date }): Promise<PaginatedResult<Transaction>> {
+  async listTransactions(filters?: ListTransactionsFilters): Promise<PaginatedResult<Transaction>> {
     const skip = filters?.skip ?? 0;
     const limit = filters?.limit ?? 10;
     const params = new URLSearchParams({
@@ -332,6 +415,18 @@ export class WooviClient {
       params.set('end', filters.endDate.toISOString());
     }
 
+    if (filters?.charge) {
+      params.set('charge', filters.charge);
+    }
+
+    if (filters?.pixQrCode) {
+      params.set('pixQrCode', filters.pixQrCode);
+    }
+
+    if (filters?.withdrawal) {
+      params.set('withdrawal', filters.withdrawal);
+    }
+
     const response = await this.makeRequest<{ transactions: Transaction[]; pageInfo: PageInfo }>('GET', `/api/v1/transaction?${params.toString()}`);
 
     return {
@@ -345,11 +440,11 @@ export class WooviClient {
     return response.accounts ?? [];
   }
 
-  async getBalance(accountId?: string, options?: GetBalanceOptions): Promise<Balance> {
+  async getBalance(accountId?: string, options?: GetBalanceOptions): Promise<Account> {
     const cacheKey = `balance:${accountId || 'default'}`;
 
     if (!options?.bypassCache) {
-      const cached = this.cache.get(cacheKey) as Balance | undefined;
+      const cached = this.cache.get(cacheKey) as Account | undefined;
       if (cached) {
         return cached;
       }
@@ -358,25 +453,18 @@ export class WooviClient {
     const endpoint = accountId ? `/api/v1/account/${accountId}` : '/api/v1/account/';
     const response = await this.makeRequest<(AccountsResponse & AccountResponse)>('GET', endpoint);
 
-    let account;
-    if (accountId) {
-      account = response.account ?? response.accounts?.find((candidate) => candidate.accountId === accountId);
-    } else {
-      account = response.accounts?.find((candidate) => candidate.isDefault) || response.accounts?.[0];
-    }
+    const account = this.pickAccountFromResponse(response, accountId);
 
     if (!account || !account.balance) {
       this.logger.warn('Account or balance not found in response', { response });
       throw new Error('No account found or balance data unavailable');
     }
 
-    const balance = account.balance;
-
     if (!options?.bypassCache) {
-      this.cache.set(cacheKey, balance, 60000);
+      this.cache.set(cacheKey, account, 60000);
     }
 
-    return balance;
+    return account;
   }
 
   async createRefund(data: RefundInput): Promise<Refund> {
@@ -385,7 +473,7 @@ export class WooviClient {
   }
 
   async createChargeRefund(chargeID: string, data: ChargeRefundInput): Promise<Refund> {
-    const response = await this.makeRequest<{ refund: Refund }>('POST', `/api/v1/charge/${chargeID}/refund`, data);
+    const response = await this.makeRequest<{ refund: Refund }>('POST', `/api/v1/charge/${encodeURIComponent(chargeID)}/refund`, data);
     return response.refund;
   }
 

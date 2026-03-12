@@ -13,8 +13,12 @@ export interface ChargeInput {
     email?: string;
     phone?: string;
     taxID?: string;
+    correlationID?: string;
+    address?: Address;
   };
   expiresIn?: number;
+  expiresDate?: string;
+  fixedLocation?: boolean;
   additionalInfo?: { key: string; value: string }[];
   redirectUrl?: string;
   ensureSameTaxID?: boolean;
@@ -109,18 +113,27 @@ export interface Balance {
   total: number;
   blocked: number;
   available: number;
+  blockedBySecurity?: number;
+  blockedByWithdrawSafety?: number;
 }
 
 export interface Account {
   accountId: string;
   isDefault?: boolean;
   balance: Balance;
+  officialName?: string;
+  tradeName?: string;
+  branch?: string;
+  account?: string;
+  accountName?: string;
+  taxID?: string;
+  taxId?: string;
 }
 
 export interface ChargeRefundInput {
   value?: number;
   correlationID?: string;
-  description?: string;
+  comment?: string;
 }
 
 export interface RefundInput {
