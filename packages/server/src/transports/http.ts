@@ -5,11 +5,51 @@ import { Logger } from '@woovi/client';
 import type { ServerConfig } from '../core/config.js';
 import type { WooviMcpRuntime } from '../server.js';
 import { getConfiguredServer } from '../server.js';
+import { maskSensitiveData } from '../utils/masking.js';
 
 export interface HttpAppRuntime {
   app: Express;
   transport: StreamableHTTPServerTransport;
   logger: Logger;
+}
+
+const HEARTBEAT_INTERVAL_MS = 15_000;
+const DEFAULT_SSE_EVENT_NAME = 'woovi';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function sanitizeSseEventName(eventName: string): string {
+  const normalized = eventName.trim();
+
+  if (!normalized || /[\r\n]/.test(normalized) || !/^[A-Za-z0-9:_-]+$/.test(normalized)) {
+    return DEFAULT_SSE_EVENT_NAME;
+  }
+
+  return normalized;
+}
+
+export function normalizeWebhookEventPayload(payload: unknown): Record<string, unknown> {
+  if (!isRecord(payload)) {
+    throw new Error('Webhook payload must be a JSON object');
+  }
+
+  const rawEvent = payload['event'];
+  if (typeof rawEvent !== 'string' || rawEvent.trim() === '') {
+    throw new Error('Webhook payload must include a non-empty event');
+  }
+
+  const maskedPayload = maskSensitiveData(payload);
+  const normalizedPayload = isRecord(maskedPayload) ? maskedPayload : {};
+
+  return {
+    ...normalizedPayload,
+    event: sanitizeSseEventName(rawEvent),
+    receivedAt: typeof payload['receivedAt'] === 'string' && payload['receivedAt'].trim() !== ''
+      ? payload['receivedAt']
+      : new Date().toISOString(),
+  };
 }
 
 export function assertHttpSecurityConfig(config: ServerConfig): void {
@@ -86,12 +126,17 @@ export function createHttpApp(runtime: WooviMcpRuntime): HttpAppRuntime {
     res.flushHeaders();
     res.write(`event: ready\ndata: ${JSON.stringify({ status: 'connected' })}\n\n`);
 
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, HEARTBEAT_INTERVAL_MS);
+
     const unsubscribe = runtime.eventBus.subscribe((event) => {
-      const eventName = typeof event['event'] === 'string' ? String(event['event']) : 'woovi';
+      const eventName = sanitizeSseEventName(typeof event['event'] === 'string' ? event['event'] : '');
       res.write(`event: ${eventName}\ndata: ${JSON.stringify(event)}\n\n`);
     });
 
     req.on('close', () => {
+      clearInterval(heartbeat);
       unsubscribe();
       res.end();
     });
@@ -100,13 +145,15 @@ export function createHttpApp(runtime: WooviMcpRuntime): HttpAppRuntime {
   if (runtime.config.webhookIngressToken) {
     const webhookAuth = createAuthMiddleware(logger, runtime.config.webhookIngressToken);
     app.post('/webhooks/events', webhookAuth, (req: Request, res: Response) => {
-      const payload = {
-        receivedAt: new Date().toISOString(),
-        ...req.body,
-      };
-
-      runtime.eventBus.publish(payload);
-      res.status(202).json({ status: 'accepted' });
+      try {
+        const payload = normalizeWebhookEventPayload(req.body);
+        runtime.eventBus.publish(payload);
+        res.status(202).json({ status: 'accepted' });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn('Rejected invalid webhook payload', { error: message });
+        res.status(400).json({ error: message });
+      }
     });
   } else {
     logger.warn('Webhook ingress route disabled because WOOVI_WEBHOOK_INGRESS_TOKEN is not configured');
