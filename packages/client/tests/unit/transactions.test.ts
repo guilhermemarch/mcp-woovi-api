@@ -130,6 +130,34 @@ describe('WooviClient Transaction Methods', () => {
       expect(callUrl).toContain('start');
       expect(callUrl).toContain('end');
     });
+
+    it('should include documented charge, pixQrCode, and withdrawal filters when provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          transactions: [],
+          pageInfo: {
+            skip: 0,
+            limit: 10,
+            totalCount: 0,
+            hasPreviousPage: false,
+            hasNextPage: false,
+          },
+        }),
+      });
+
+      await client.listTransactions({
+        charge: 'charge-123',
+        pixQrCode: 'pix-static-123',
+        withdrawal: 'withdrawal-123',
+      } as any);
+
+      const callUrl = mockFetch.mock.calls[0][0];
+      expect(callUrl).toContain('charge=charge-123');
+      expect(callUrl).toContain('pixQrCode=pix-static-123');
+      expect(callUrl).toContain('withdrawal=withdrawal-123');
+    });
   });
 
   describe('getBalance', () => {
@@ -186,7 +214,7 @@ describe('WooviClient Transaction Methods', () => {
       );
     });
 
-    it('should return Balance object with total, blocked, and available fields', async () => {
+    it('should return an account summary with nested balance fields', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -195,6 +223,8 @@ describe('WooviClient Transaction Methods', () => {
             {
               accountId: 'acc_default',
               isDefault: true,
+              officialName: 'Conta Principal',
+              accountName: 'Conta de Teste',
               balance: {
                 total: 150000,
                 blocked: 50000,
@@ -207,12 +237,13 @@ describe('WooviClient Transaction Methods', () => {
 
       const result = await client.getBalance();
 
-      expect(result).toHaveProperty('total');
-      expect(result).toHaveProperty('blocked');
-      expect(result).toHaveProperty('available');
-      expect(result.total).toBe(150000);
-      expect(result.blocked).toBe(50000);
-      expect(result.available).toBe(100000);
+      expect(result).toHaveProperty('accountId', 'acc_default');
+      expect(result).toHaveProperty('officialName', 'Conta Principal');
+      expect(result).toHaveProperty('accountName', 'Conta de Teste');
+      expect(result).toHaveProperty('balance');
+      expect(result.balance.total).toBe(150000);
+      expect(result.balance.blocked).toBe(50000);
+      expect(result.balance.available).toBe(100000);
     });
 
     it('should bypass cached balance when requested explicitly', async () => {
@@ -255,8 +286,8 @@ describe('WooviClient Transaction Methods', () => {
       const first = await client.getBalance();
       const second = await client.getBalance(undefined, { bypassCache: true });
 
-      expect(first.total).toBe(100000);
-      expect(second.total).toBe(120000);
+      expect(first.balance.total).toBe(100000);
+      expect(second.balance.total).toBe(120000);
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
@@ -398,6 +429,40 @@ describe('WooviClient Transaction Methods', () => {
         expect.any(String),
         expect.objectContaining({
           body: JSON.stringify(refundInput),
+        })
+      );
+    });
+
+    it('should send comment when creating a charge refund', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          refund: {
+            refundId: 'refund-id-2',
+            correlationID: 'refund-corr-2',
+            value: 5000,
+            status: 'IN_PROCESSING',
+            comment: 'Charge refund comment',
+            time: '2026-02-12T10:00:00Z',
+          },
+        }),
+      });
+
+      await client.createChargeRefund('charge-123', {
+        correlationID: 'refund-corr-2',
+        value: 5000,
+        comment: 'Charge refund comment',
+      } as any);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.woovi.com/api/v1/charge/charge-123/refund',
+        expect.objectContaining({
+          body: JSON.stringify({
+            correlationID: 'refund-corr-2',
+            value: 5000,
+            comment: 'Charge refund comment',
+          }),
         })
       );
     });

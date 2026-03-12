@@ -303,41 +303,60 @@ describe('WooviClient - Customer Methods', () => {
       );
     });
 
-    it('should apply local search filtering without sending undocumented query params', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          customers: [
-            {
-              name: 'João Silva',
-              email: 'joao@example.com',
-              taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
-              updatedAt: '2026-02-12T10:00:00Z',
+    it('should search across multiple upstream pages without sending undocumented query params', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            customers: [
+              {
+                name: 'Maria Santos',
+                email: 'maria@example.com',
+                taxID: { taxID: '98765432109', type: 'BR:CPF' as const },
+                updatedAt: '2026-02-12T10:00:00Z',
+              },
+            ],
+            pageInfo: {
+              skip: 0,
+              limit: 100,
+              totalCount: 2,
+              hasPreviousPage: false,
+              hasNextPage: true,
             },
-            {
-              name: 'Maria Santos',
-              email: 'maria@example.com',
-              taxID: { taxID: '98765432109', type: 'BR:CPF' as const },
-              updatedAt: '2026-02-12T10:00:00Z',
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            customers: [
+              {
+                name: 'João Silva',
+                email: 'joao@example.com',
+                taxID: { taxID: '12345678901', type: 'BR:CPF' as const },
+                updatedAt: '2026-02-12T10:00:00Z',
+              },
+            ],
+            pageInfo: {
+              skip: 100,
+              limit: 100,
+              totalCount: 2,
+              hasPreviousPage: true,
+              hasNextPage: false,
             },
-          ],
-          pageInfo: {
-            skip: 0,
-            limit: 10,
-            totalCount: 2,
-          hasPreviousPage: false,
-          hasNextPage: false,
-          },
-        }),
-      });
+          }),
+        });
 
-      const result = await client.listCustomers({ search: 'João' });
+      const result = await client.listCustomers({ search: 'João', limit: 10 });
 
+      expect(mockFetch).toHaveBeenCalledTimes(2);
       const callUrl = mockFetch.mock.calls[0][0];
       expect(callUrl).not.toContain('search=');
       expect(result.items).toHaveLength(1);
       expect(result.items[0]?.name).toBe('João Silva');
+      expect(result.pageInfo.totalCount).toBe(1);
+      expect(result.pageInfo.hasNextPage).toBe(false);
     });
 
     it('should support skip and limit pagination parameters', async () => {
