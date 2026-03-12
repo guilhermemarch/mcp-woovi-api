@@ -20,12 +20,14 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "quality": "pnpm build && pnpm typecheck && pnpm test:coverage && node scripts/verify-challenge.mjs",
+    "smoke:sandbox": "pnpm build && node scripts/smoke-sandbox.mjs",
     "dev": "pnpm --filter @woovi/server dev",
     "start": "pnpm --filter @woovi/server start",
     "start:stdio": "pnpm --filter @woovi/server start:stdio",
     "start:http": "pnpm --filter @woovi/server start:http",
     "verify": "node scripts/verify-challenge.mjs",
-    "verify:build": "pnpm build && node scripts/verify-challenge.mjs"
+    "verify:build": "pnpm build && node scripts/verify-challenge.mjs",
+    "verify:mcp": "pnpm smoke:sandbox"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
