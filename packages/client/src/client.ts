@@ -108,6 +108,14 @@ export class WooviClient {
     this.logger.info('Client initialized', { baseUrl: this.baseUrl, timeoutMs: this.timeoutMs });
   }
 
+  private isTransientNetworkError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    return error instanceof TypeError || /fetch failed|network|socket hang up|econnreset|econnrefused|enotfound|timed out|timeout/i.test(error.message);
+  }
+
   private async makeRequest<TResponse = unknown>(method: string, path: string, body?: unknown): Promise<TResponse> {
     const url = `${this.baseUrl}${path}`;
     this.logger.debug('Request started', { method, path });
@@ -116,107 +124,114 @@ export class WooviClient {
       'Content-Type': 'application/json',
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-
-    const options: RequestInit = {
-      method,
-      headers,
-      signal: controller.signal,
-    };
-
-    if (body) {
-      options.body = JSON.stringify(body);
-    }
-
     let attempt = 0;
     const maxRetries = 3;
     const baseDelays = [1000, 2000, 5000];
 
-    try {
-      while (attempt <= maxRetries) {
+    while (attempt <= maxRetries) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+      const options: RequestInit = {
+        method,
+        headers,
+        signal: controller.signal,
+      };
+
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+
+      try {
+        const response = await fetch(url, options);
+
+        if (response.ok) {
+          return await response.json() as TResponse;
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          throw new Error(`Auth error: ${response.status}`);
+        }
+
+        if (response.status === 429 && attempt < maxRetries) {
+          const retryAfterHeader = response.headers.get('Retry-After');
+          const delay = retryAfterHeader
+            ? parseInt(retryAfterHeader, 10) * 1000
+            : (baseDelays[attempt] ?? 5000);
+          this.logger.warn('Rate limited (429), retrying', {
+            attempt: attempt + 1,
+            delayMs: delay,
+            path,
+            retryAfter: retryAfterHeader,
+          });
+          await this.sleep(delay);
+          attempt++;
+          continue;
+        }
+
+        let errorMessage = `Request failed with status ${response.status}`;
+        let errorBody: ApiErrorResponse | undefined;
+
         try {
-          const response = await fetch(url, options);
+          errorBody = await response.json() as ApiErrorResponse;
 
-          // Success case
-          if (response.ok) {
-            return await response.json() as TResponse;
+          if (typeof errorBody.error === 'string') {
+            errorMessage = errorBody.error;
+          } else if (Array.isArray(errorBody.error) && errorBody.error.length > 0) {
+            const messages = errorBody.error.map((entry) => entry.message || String(entry)).filter(Boolean);
+            if (messages.length > 0) {
+              errorMessage = messages.join('; ');
+            }
+          } else if (Array.isArray(errorBody.errors) && errorBody.errors.length > 0) {
+            const messages = errorBody.errors.map((entry) => entry.message || String(entry)).filter(Boolean);
+            if (messages.length > 0) {
+              errorMessage = messages.join('; ');
+            }
           }
+        } catch (parseError) {
+          this.logger.warn('Failed to parse error body', { parseError });
+        }
 
-          // 401/403: immediate failure, no retry
-          if (response.status === 401 || response.status === 403) {
-            throw new Error(`Auth error: ${response.status}`);
-          }
-
-          // 429: retry with exponential backoff or Retry-After header
-          if (response.status === 429 && attempt < maxRetries) {
-            // Check for Retry-After header (in seconds)
-            const retryAfterHeader = response.headers.get('Retry-After');
-            const delay = retryAfterHeader 
-              ? parseInt(retryAfterHeader, 10) * 1000  // Convert seconds to milliseconds
-              : (baseDelays[attempt] ?? 5000);
-            this.logger.warn('Rate limited (429), retrying', { attempt: attempt + 1, delayMs: delay, path, retryAfter: retryAfterHeader });
+        throw new WooviApiError(errorMessage, response.status, errorBody);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          const timeoutError = new Error(`Request timed out after ${this.timeoutMs}ms`);
+          if (attempt < maxRetries) {
+            const delay = baseDelays[attempt] ?? 5000;
+            this.logger.warn('Request timed out, retrying', {
+              attempt: attempt + 1,
+              delayMs: delay,
+              path,
+              timeoutMs: this.timeoutMs,
+            });
             await this.sleep(delay);
             attempt++;
             continue;
           }
 
-          // For 429 at max retries or other errors: parse error body and throw
-          let errorMessage = `Request failed with status ${response.status}`;
-          let errorBody: ApiErrorResponse | undefined;
-
-          try {
-            errorBody = await response.json() as ApiErrorResponse;
-
-            // Format 1: { error: "string" }
-            if (typeof errorBody.error === 'string') {
-              errorMessage = errorBody.error;
-            }
-            // Format 2: { error: [{ message, code?, path? }] }
-            else if (Array.isArray(errorBody.error) && errorBody.error.length > 0) {
-              const messages = errorBody.error.map((entry) => entry.message || String(entry)).filter(Boolean);
-              if (messages.length > 0) {
-                errorMessage = messages.join('; ');
-              }
-            }
-            // Format 3: { errors: [{ message }] }
-            else if (Array.isArray(errorBody.errors) && errorBody.errors.length > 0) {
-              const messages = errorBody.errors.map((entry) => entry.message || String(entry)).filter(Boolean);
-              if (messages.length > 0) {
-                errorMessage = messages.join('; ');
-              }
-            }
-          } catch (parseError) {
-            // Fallback: if JSON parsing fails, use status-only message
-            this.logger.warn('Failed to parse error body', { parseError });
-          }
-
-          throw new WooviApiError(errorMessage, response.status, errorBody);
-        } catch (error) {
-          // Abort errors (timeout): throw immediately with clear message
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            this.logger.error('Request timed out', { path, timeoutMs: this.timeoutMs });
-            throw new Error(`Request timed out after ${this.timeoutMs}ms`);
-          }
-
-          // If we've exhausted retries, throw the error
-          if (attempt >= maxRetries) {
-            throw error;
-          }
-
-          // For non-429 errors, throw immediately
-          if (error instanceof Error && !error.message.includes('429')) {
-            throw error;
-          }
-
-          attempt++;
+          this.logger.error('Request timed out', { path, timeoutMs: this.timeoutMs });
+          throw timeoutError;
         }
-      }
 
-      throw new Error('Request failed: max retries exceeded');
-    } finally {
-      clearTimeout(timeoutId);
+        if (this.isTransientNetworkError(error) && attempt < maxRetries) {
+          const delay = baseDelays[attempt] ?? 5000;
+          this.logger.warn('Transient network failure, retrying', {
+            attempt: attempt + 1,
+            delayMs: delay,
+            path,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          await this.sleep(delay);
+          attempt++;
+          continue;
+        }
+
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
     }
+
+    throw new Error('Request failed: max retries exceeded');
   }
 
   private sleep(ms: number): Promise<void> {
