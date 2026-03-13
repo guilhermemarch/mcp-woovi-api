@@ -37,6 +37,18 @@
     {
       "key": "transactionEndToEndId",
       "value": "E12345678901234567890123456789012"
+    },
+    {
+      "key": "subscriptionId",
+      "value": "subscription-123"
+    },
+    {
+      "key": "pixQrCodeId",
+      "value": "pix-static-123"
+    },
+    {
+      "key": "withdrawalId",
+      "value": "withdrawal-123"
     }
   ],
   "item": [
@@ -61,7 +73,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"value\": 5000,\n  \"correlationID\": \"{{chargeCorrelationId}}\",\n  \"comment\": \"Charge created from Postman\",\n  \"customer\": {\n    \"name\": \"Example Customer\",\n    \"email\": \"{{customerEmail}}\",\n    \"phone\": \"11999999999\",\n    \"taxID\": \"12345678901\"\n  }\n}"
+              "raw": "{\n  \"value\": 5000,\n  \"correlationID\": \"{{chargeCorrelationId}}\",\n  \"comment\": \"Charge created from Postman\",\n  \"expiresDate\": \"2026-12-31T23:59:59.000Z\",\n  \"fixedLocation\": true,\n  \"customer\": {\n    \"name\": \"Example Customer\",\n    \"email\": \"{{customerEmail}}\",\n    \"phone\": \"11999999999\",\n    \"taxID\": \"12345678901\",\n    \"correlationID\": \"cust-correlation-123\",\n    \"address\": {\n      \"city\": \"Palmas\",\n      \"state\": \"TO\"\n    }\n  },\n  \"additionalInfo\": [\n    {\n      \"key\": \"orderId\",\n      \"value\": \"A-123\"\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/charge?return_existing=true",
@@ -80,7 +92,7 @@
                 }
               ]
             },
-            "description": "Matches packages/client/src/client.ts:createCharge."
+            "description": "Matches packages/client/src/client.ts:createCharge, including the expanded charge payload supported by the MCP tool and client."
           }
         },
         {
@@ -121,7 +133,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/charge?skip=0&limit=10&status=ACTIVE&start=2026-01-01T00:00:00.000Z&end=2026-01-31T23:59:59.999Z&customer={{customerId}}",
+              "raw": "{{baseUrl}}/api/v1/charge?skip=0&limit=10&status=ACTIVE&start=2026-01-01T00:00:00.000Z&end=2026-01-31T23:59:59.999Z&customer={{customerId}}&subscription={{subscriptionId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -154,10 +166,14 @@
                 {
                   "key": "customer",
                   "value": "{{customerId}}"
+                },
+                {
+                  "key": "subscription",
+                  "value": "{{subscriptionId}}"
                 }
               ]
             },
-            "description": "Matches packages/client/src/client.ts:listCharges. Note the query names are start/end, not startDate/endDate."
+            "description": "Matches packages/client/src/client.ts:listCharges. Note the query names are start/end, not startDate/endDate, and subscription is forwarded when present."
           }
         }
       ]
@@ -283,7 +299,7 @@
                 }
               ]
             },
-            "description": "Matches the upstream request used by packages/client/src/client.ts:listCustomers. The optional MCP `search` filter is applied locally after this paginated fetch."
+            "description": "Matches the upstream request used by packages/client/src/client.ts:listCustomers. The optional MCP `search` filter is evaluated across paginated upstream fetches without sending any undocumented `search` query parameter."
           }
         }
       ]
@@ -303,7 +319,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/transaction?skip=0&limit=10&start=2026-01-01T00:00:00.000Z&end=2026-01-31T23:59:59.999Z",
+              "raw": "{{baseUrl}}/api/v1/transaction?skip=0&limit=10&start=2026-01-01T00:00:00.000Z&end=2026-01-31T23:59:59.999Z&charge={{chargeCorrelationId}}&pixQrCode={{pixQrCodeId}}&withdrawal={{withdrawalId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -328,10 +344,22 @@
                 {
                   "key": "end",
                   "value": "2026-01-31T23:59:59.999Z"
+                },
+                {
+                  "key": "charge",
+                  "value": "{{chargeCorrelationId}}"
+                },
+                {
+                  "key": "pixQrCode",
+                  "value": "{{pixQrCodeId}}"
+                },
+                {
+                  "key": "withdrawal",
+                  "value": "{{withdrawalId}}"
                 }
               ]
             },
-            "description": "Matches packages/client/src/client.ts:listTransactions."
+            "description": "Matches packages/client/src/client.ts:listTransactions, including the documented charge, pixQrCode, and withdrawal filters."
           }
         },
         {
@@ -383,7 +411,7 @@
                 ""
               ]
             },
-            "description": "Matches packages/client/src/client.ts:getBalance without accountId. The client extracts the default account balance from the /api/v1/account/ response."
+            "description": "Matches packages/client/src/client.ts:getBalance without accountId. The client extracts the default account summary, including nested balance fields, from the /api/v1/account/ response."
           }
         },
         {
@@ -409,7 +437,7 @@
                 "{{accountId}}"
               ]
             },
-            "description": "Matches packages/client/src/client.ts:getBalance with accountId."
+            "description": "Matches packages/client/src/client.ts:getBalance with accountId and returns the full account summary."
           }
         }
       ]
@@ -469,7 +497,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"value\": 500,\n  \"correlationID\": \"charge-refund-correlation-123\",\n  \"description\": \"Refund generated from Postman\"\n}"
+              "raw": "{\n  \"value\": 500,\n  \"correlationID\": \"charge-refund-correlation-123\",\n  \"comment\": \"Refund generated from Postman\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/charge/{{chargeCorrelationId}}/refund",
@@ -484,7 +512,7 @@
                 "refund"
               ]
             },
-            "description": "Matches packages/client/src/client.ts:createChargeRefund."
+            "description": "Matches packages/client/src/client.ts:createChargeRefund. Charge refunds use the `comment` field in the request body."
           }
         },
         {
