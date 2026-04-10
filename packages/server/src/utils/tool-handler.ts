@@ -61,9 +61,12 @@ export function formatToolSuccess<TResult, TStructured extends Record<string, un
   options?: SuccessOptions<TStructured>,
 ): CallToolResult {
   const masked = maskSensitiveData(result);
+  const structuredContent = options?.structuredContent !== undefined
+    ? maskSensitiveData(options.structuredContent) as TStructured
+    : undefined;
 
   return {
-    ...(options?.structuredContent !== undefined ? { structuredContent: options.structuredContent } : {}),
+    ...(structuredContent !== undefined ? { structuredContent } : {}),
     content: [{ type: 'text', text: JSON.stringify(masked, null, 2) || '{}' }],
   };
 }
