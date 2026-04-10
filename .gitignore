@@ -5,6 +5,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Local worktrees
+.worktrees/
+
 # Environment variables
 .env
 .env.local
@@ -47,3 +50,21 @@ node_modules/.vite/
 scripts/
 packages/teste.ts
 test-sandbox.ts
+
+# Local-only QA 
+
+qa-scenarios.js
+qa-scenarios.ts
+IA-THINGS/
+IA-THINGS/**
+**/IA-THINGS/
+**/IA-THINGS/**
+do-this.local.md
+docs/tools/
+docs/demo/
+docs/plans/2026-02-19-env-cleanup.md
+.env.example
+CONTRIBUTING.md
+api-doc.yaml
+docs/tools/README.md
+docs/architecture/README.md

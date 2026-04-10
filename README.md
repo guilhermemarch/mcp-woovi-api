@@ -1,188 +1,220 @@
 # Woovi MCP Server
 
-Model Context Protocol (MCP) server for the Woovi/OpenPix API, enabling AI assistants to interact with Woovi's financial services including Pix payments, customer management, transactions, and refunds.
+Model Context Protocol server for Woovi/OpenPix. It exposes Pix charges, customers, transactions, balance, refunds, resources, and reusable prompts so AI assistants like Claude can operate against the Woovi API with a clean MCP surface.
 
-## Features
+## What is implemented
 
-- **10 MCP Tools**: Complete coverage of Woovi API operations (charges, customers, transactions, refunds)
-- **3 MCP Resources**: Balance information, API documentation, webhook schemas
-- **3 MCP Prompts**: Daily summaries, customer reports, reconciliation workflows
-- **Dual Transport**: stdio (Claude Desktop) and HTTP (remote/multi-tenant) support
-- **Type-Safe**: Full TypeScript implementation with Zod schema validation
-- **Production-Ready**: Comprehensive test coverage, error handling, and caching
+- 10 required MCP tools:
+  - `create_charge`, `get_charge`, `list_charges`
+  - `create_customer`, `get_customer`, `list_customers`
+  - `get_transactions`, `get_balance`
+  - `create_refund`, `get_refund`
+- 3 required MCP resources:
+  - `balance`
+  - `endpoints`
+  - `webhook_schemas`
+- 3 required MCP prompts:
+  - `daily_summary`
+  - `customer_report`
+  - `reconciliation_check`
+- Bonus capabilities:
+  - `list_accounts`
+  - `get_charge_analytics`
+  - `get_customer_payment_summary`
+  - SSE event stream at `GET /events`
+  - webhook ingress endpoint at `POST /webhooks/events`
+  - multi-account balance lookup through `accountId`
+  - cache TTL for customer lookups and tool-driven balance reads
 
-## Installation
+## Stack
+
+- TypeScript
+- `@modelcontextprotocol/sdk`
+- Zod validation
+- reusable `@woovi/client` package
+- stdio and HTTP transports
+
+## Quick start
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Build both packages
+cp .env.example .env
 pnpm build
+pnpm start:stdio
 ```
 
-## Configuration
+To run the HTTP transport instead:
 
-Create a `.env` file in the project root:
+```bash
+pnpm start:http
+```
+
+To validate the live sandbox flow with your Woovi credential:
+
+```bash
+pnpm smoke:sandbox
+```
+
+## Environment
+
+Use sandbox values while developing:
 
 ```env
-# Required: Your Woovi/OpenPix App ID
-WOOVI_APP_ID=your-app-id-here
-
-# Optional: Woovi API base URL (defaults to production)
-WOOVI_API_URL=https://api.woovi.com
-
-# Optional: HTTP server port (defaults to 3000)
+WOOVI_APP_ID=your_sandbox_app_id_here
+WOOVI_API_URL=https://api.woovi-sandbox.com
+WOOVI_AUTH_MODE=raw
+WOOVI_LOG_LEVEL=info
 PORT=3000
+MCP_HTTP_AUTH_TOKEN=replace-with-strong-random-token
+WOOVI_WEBHOOK_INGRESS_TOKEN=
 ```
 
-Get your App ID from the [Woovi Dashboard](https://app.openpix.com.br/).
+Notes:
+- `WOOVI_AUTH_MODE=raw` sends `Authorization: <appId>`
+- `WOOVI_AUTH_MODE=bearer` sends `Authorization: Bearer <appId>`
+- `MCP_HTTP_AUTH_TOKEN` is required for the HTTP transport and protects `POST /mcp` and `GET /events`
+- `WOOVI_WEBHOOK_INGRESS_TOKEN` enables and protects `POST /webhooks/events`
 
-## Usage
+## Claude Desktop
 
-### Stdio Transport (Claude Desktop)
+Example config is in [config/claude-desktop.example.json](/home/guilherme/Desktop/mcp-woovi-server-ts/config/claude-desktop.example.json).
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+The relevant entry is:
 
 ```json
 {
   "mcpServers": {
     "woovi": {
       "command": "node",
-      "args": ["/path/to/mcp-woovi-server-ts/packages/server/dist/stdio.js"],
+      "args": [
+        "/absolute/path/to/mcp-woovi-server-ts/packages/server/dist/stdio.js"
+      ],
       "env": {
-        "WOOVI_APP_ID": "your-app-id-here"
+        "WOOVI_APP_ID": "your-sandbox-app-id",
+        "WOOVI_API_URL": "https://api.woovi-sandbox.com"
       }
     }
   }
 }
 ```
 
-Restart Claude Desktop. The Woovi tools will now be available.
+## HTTP transport
 
-### HTTP Transport (Remote/Multi-tenant)
+Endpoints:
 
-Start the HTTP server:
+- `POST /mcp`: Streamable HTTP MCP endpoint
+- `GET /healthz`: health check
+- `GET /events`: SSE stream for webhook notifications
+- `POST /webhooks/events`: publish webhook payloads into the SSE bus when `WOOVI_WEBHOOK_INGRESS_TOKEN` is configured
 
-```bash
-export WOOVI_APP_ID="your-app-id"
-node packages/server/dist/http.js
-```
-
-The server listens on port 3000 (or `$PORT`) and accepts MCP requests at `POST /mcp`.
-
-## Example Conversation
-
-**User:** "I need to create a Pix charge for R$ 50.00 for customer João Silva (joao@example.com)"
-
-**AI Assistant:** I'll create a charge for you.
-
-*Calls `create_charge` tool with:*
-```json
-{
-  "value": 5000,
-  "correlationID": "unique-uuid-here",
-  "customer": {
-    "name": "João Silva",
-    "email": "joao@example.com"
-  }
-}
-```
-
-**Result:** Charge created successfully with:
-- QR Code (Base64 image)
-- Pix copy-paste code (brCode)
-- Payment link
-- Charge ID and correlation ID
-
-**User:** "What's my current account balance?"
-
-**AI Assistant:** Let me check that for you.
-
-*Calls `get_balance` tool*
-
-**Result:** Your current balance is R$ 1,250.00 (125000 centavos).
-
-## Available Tools
-
-See [TOOLS.md](TOOLS.md) for the complete tool catalog with input schemas and descriptions.
-
-- **Charges**: `create_charge`, `get_charge`, `list_charges`
-- **Customers**: `create_customer`, `get_customer`, `list_customers`
-- **Transactions**: `get_transactions`, `get_balance`
-- **Refunds**: `create_refund`, `get_refund`
-
-## Documentation
-
-- [**Architecture**](docs/architecture/README.md) - System design and patterns
-- [**Tools Reference**](docs/tools/README.md) - Full list of available tools
-- [**Development**](packages/README.md) - Setup and contribution guide
-
-## Development
+Example:
 
 ```bash
-# Install dependencies
-pnpm install
+curl -H "Authorization: Bearer $MCP_HTTP_AUTH_TOKEN" \
+  http://localhost:3000/healthz
+```
 
-# Run tests
-pnpm test
+## Docker
 
-# Run tests with UI
-pnpm test:ui
+Build and run the HTTP transport in a container:
 
-# Build packages
+```bash
+docker build -t woovi-mcp-server .
+docker run --rm -p 3000:3000 \
+  -e WOOVI_APP_ID=your-sandbox-app-id \
+  -e WOOVI_API_URL=https://api.woovi-sandbox.com \
+  -e MCP_HTTP_AUTH_TOKEN=replace-with-strong-random-token \
+  woovi-mcp-server
+```
+
+## Developer commands
+
+```bash
 pnpm build
-
-# Watch mode (development)
-pnpm dev
-```
-
-## Project Structure
-
-```
-mcp-woovi-server-ts/
-├── packages/
-│   ├── client/          # @woovi/client - Pure API client
-│   │   └── src/
-│   │       ├── types.ts
-│   │       ├── cache.ts
-│   │       └── client.ts
-│   └── server/          # @woovi/server - MCP server
-│       ├── src/
-│       │   ├── server.ts
-│       │   ├── stdio.ts
-│       │   ├── http.ts
-│       │   ├── tools/
-│       │   ├── resources/
-│       │   └── prompts/
-│       └── tests/
-│           └── integration/
-└── README.md
-```
-
-## Important Notes
-
-- **Value Fields**: Always specified in centavos (5000 = R$ 50.00)
-- **CPF/CNPJ**: Automatically detected based on length (11 digits = CPF, 14 digits = CNPJ)
-- **Caching**: Balance and customer lookups are cached for 60 seconds
-- **Rate Limiting**: Automatic exponential backoff on 429 (Too Many Requests) errors
-- **Authorization**: Uses plain `Authorization: ${appId}` header (no "Bearer" prefix)
-
-## Testing
-
-The project includes comprehensive test coverage:
-
-- **Unit Tests**: All WooviClient methods, cache, and MCP tools/resources/prompts
-- **Integration Tests**: Full MCP server stack with in-process client
-- **Test Coverage**: 99/99 client tests, 85/85 server tests passing
-
-Run tests:
-```bash
 pnpm test
+pnpm test:unit
+pnpm test:integration
+pnpm test:coverage
+pnpm typecheck
+pnpm quality
+pnpm smoke:sandbox
+pnpm verify:build
 ```
 
-## Support
+`pnpm verify:build` compiles the repo and verifies the exposed MCP surface in-memory.
+`pnpm quality` is the single-command local gate used for challenge readiness: build, typecheck, coverage threshold, and MCP surface verification.
+`pnpm smoke:sandbox` builds the repo, starts the `stdio` server, and validates the live sandbox flow through the MCP client.
 
-For Woovi API documentation, visit [developers.openpix.com.br](https://developers.openpix.com.br/).
+## Project layout
 
-For MCP protocol documentation, visit [modelcontextprotocol.io](https://modelcontextprotocol.io/).
+```text
+packages/client/src
+  cache.ts
+  client.ts
+  logger.ts
+  types.ts
+
+packages/client/tests/unit
+  *.test.ts
+
+packages/server/src
+  core/config.ts
+  core/event-bus.ts
+  domains/
+  mcp/register.ts
+  tools/
+  resources/
+  prompts/
+  transports/
+  server.ts
+  stdio.ts
+  http.ts
+  index.ts
+
+packages/server/tests
+  unit/
+  integration/
+```
+
+## Docs
+
+- [docs/tools/README.md](/home/guilherme/Desktop/mcp-woovi-server-ts/docs/tools/README.md)
+- [docs/architecture/README.md](/home/guilherme/Desktop/mcp-woovi-server-ts/docs/architecture/README.md)
+- [docs/qa/api-parity-matrix.md](/home/guilherme/Desktop/mcp-woovi-server-ts/docs/qa/api-parity-matrix.md)
+- [docs/postman/woovi-api.postman_collection.json](/home/guilherme/Desktop/mcp-woovi-server-ts/docs/postman/woovi-api.postman_collection.json)
+- [docs/postman/mcp-http.postman_collection.json](/home/guilherme/Desktop/mcp-woovi-server-ts/docs/postman/mcp-http.postman_collection.json)
+- [docs/demo/README.md](/home/guilherme/Desktop/mcp-woovi-server-ts/docs/demo/README.md)
+
+## Verification status
+
+Current local status:
+
+- `pnpm build` passes
+- `pnpm test` passes
+- `pnpm test:coverage` passes
+- `node scripts/verify-challenge.mjs` passes
+- `pnpm smoke:sandbox` passed against the Woovi sandbox on March 12, 2026 when `WOOVI_APP_ID` was provided
+- `pnpm audit --prod --json` reports `0` production vulnerabilities after pinning patched transitive dependencies through `pnpm.overrides`
+
+Coverage gate:
+
+- statements: `>= 80%`
+- lines: `>= 80%`
+- functions: `>= 80%`
+- branches: `>= 65%`
+
+## Important behavior
+
+- values are always in centavos
+- sensitive fields are masked in logs and MCP outputs where appropriate
+- 429 responses, transient fetch failures, and timeouts are retried with backoff in `@woovi/client`
+- `get_customer` uses the documented customer identifier path (`correlationID` or `taxID`)
+- the Woovi sandbox may resolve `create_customer.correlationID` to a provider-generated identifier; use the returned customer payload for follow-up reads
+- `list_customers` supports an MCP-level `search` filter applied across paginated upstream customer results without sending undocumented query parameters
+- `get_balance` returns the selected account summary with nested `balance` fields and defaults to fresh reads; `fresh: false` opts into the 60-second cache
+- balance resources (`woovi://balance/current` and `woovi://balance/{accountId}`) always bypass cache for real-time reads
+- `create_refund` supports both refund flows:
+  - charge refund via `chargeID`
+  - Pix transaction refund via `transactionEndToEndId`
+  - the MCP schema enforces exactly one of those identifiers
+- `/webhooks/events` normalizes inbound payloads and masks sensitive data before broadcasting through `GET /events`

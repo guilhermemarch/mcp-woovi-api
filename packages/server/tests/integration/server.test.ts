@@ -235,5 +235,19 @@ describe('MCP Server Integration Tests', () => {
         expect(messageContent.text).toBeTruthy();
       }
     });
+
+    it('should accept string prompt arguments for daily_summary limit', async () => {
+      const response = await client.getPrompt({
+        name: 'daily_summary',
+        arguments: {
+          limit: '3',
+        },
+      });
+
+      const messageContent = response.messages[0].content;
+      if ('type' in messageContent && messageContent.type === 'text' && 'text' in messageContent) {
+        expect(messageContent.text).toContain('limit=3');
+      }
+    });
   });
 });

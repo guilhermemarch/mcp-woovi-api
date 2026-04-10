@@ -100,12 +100,14 @@ Security controls:
 - tool/resource/prompt unit tests
 - unit tests separated physically under `packages/*/tests/unit`
 - in-memory MCP integration tests
+- opt-in sandbox smoke test over the real `stdio` transport:
+  - [scripts/smoke-sandbox.mjs](/home/guilherme/Desktop/mcp-woovi-server-ts/scripts/smoke-sandbox.mjs)
 - build-time verification script:
   - [scripts/verify-challenge.mjs](/home/guilherme/Desktop/mcp-woovi-server-ts/scripts/verify-challenge.mjs)
 
 ## Current constraints
 
-- real sandbox calls are not part of the automated local suite
-- the `list_customers` search option is implemented in the MCP/client layer as a local filter over the fetched page because `api-doc.yaml` does not document a server-side `search` query parameter
-- the HTTP event stream is an internal SSE channel fed by `/webhooks/events`; it is not a direct subscription to the upstream Woovi platform
+- real sandbox calls are available through `pnpm smoke:sandbox`, but they remain opt-in because they require credentials and a live external dependency
+- the `list_customers` search option is implemented in the MCP/client layer because `api-doc.yaml` does not document a server-side `search` query parameter; the implementation scans paginated upstream results to avoid page-local false negatives
+- the HTTP event stream is an internal SSE channel fed by `/webhooks/events`; ingress payloads are normalized and sensitive fields are masked before broadcast
 - bearer mode is supported, but a full OAuth grant/refresh flow is not implemented in this repository
