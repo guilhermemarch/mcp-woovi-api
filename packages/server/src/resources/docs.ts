@@ -27,7 +27,7 @@ Reference for the Woovi/OpenPix API subset implemented in this repository.
 - \`create_customer\` requires \`name\` and at least one of \`taxID\`, \`email\`, or \`phone\`.
 - \`get_balance\` supports optional \`accountId\`.
 - \`create_refund\` supports either \`chargeID\` or \`transactionEndToEndId\`.
-- The client retries \`429\` responses with backoff.
+- The client retries \`429\` responses and transient network failures with backoff.
 - Customer reads and tool-driven balance reads are cached for 60 seconds in the reusable client package.
 - The \`woovi://balance/current\` and \`woovi://balance/{accountId}\` resources bypass cache to expose real-time balance snapshots.
 
@@ -61,7 +61,7 @@ const ENDPOINT_SNIPPETS: Record<string, string> = {
   get_transactions: 'GET /api/v1/transaction\nSupports start, end, charge, pixQrCode, withdrawal, skip, limit.',
   get_balance: 'GET /api/v1/account/ or GET /api/v1/account/{accountId}\nReturns account balance snapshot; MCP balance resources bypass client cache.',
   create_refund: 'POST /api/v1/refund or POST /api/v1/charge/{id}/refund depending on provided identifiers.',
-  get_refund: 'GET /api/v1/refund/{id}\nAccepts refund ID or correlationID.',
+  get_refund: 'GET /api/v1/refund/{id}\nAccepts refund ID and returns the matching refund payload.',
 };
 
 export function registerDocsResource(mcpServer: McpServer) {

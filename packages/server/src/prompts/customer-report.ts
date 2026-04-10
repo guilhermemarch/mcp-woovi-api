@@ -5,7 +5,7 @@ import { registerZodPrompt } from '../utils/mcp-registration.js';
 
 const customerReportArgsSchema = {
   customer_id: z.string().describe('Customer ID to generate report for'),
-  limit: z.number().optional().describe('Maximum number of recent charges to inspect'),
+  limit: z.coerce.number().int().positive().optional().describe('Maximum number of recent charges to inspect'),
 };
 
 type CustomerReportPromptArgs = {
@@ -24,7 +24,7 @@ export function registerCustomerReportPrompt(mcpServer: McpServer) {
     },
     async (args: CustomerReportPromptArgs = {}): Promise<GetPromptResult> => {
       const customerId = args.customer_id ?? '';
-      const limit = args.limit || 10;
+      const limit = args.limit ?? 10;
       return {
         messages: [
           {

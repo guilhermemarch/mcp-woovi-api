@@ -4,7 +4,7 @@ import { createJsonResourceContents } from '../utils/resource-handler.js';
 const WEBHOOK_SCHEMAS = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Woovi Webhook Events",
-  "description": "JSON Schema for Woovi webhook event payloads",
+  "description": "JSON Schema for Woovi webhook event payloads. Includes detailed payload shapes for charge, transaction, and refund events plus the event-name catalog for movement, dispute, account-register, and Pix Automatic notifications.",
   "type": "object",
   "properties": {
     "event": {
@@ -171,7 +171,7 @@ const WEBHOOK_SCHEMAS = {
                 },
                 "status": {
                    "type": "string",
-                   "enum": ["IN_PROCESSING", "CONFIRMED", "REJECTED"],
+                   "enum": ["IN_PROCESSING", "COMPLETED", "CONFIRMED", "REJECTED"],
                    "description": "Current status of the refund"
                  },
                 "charge": {
@@ -244,7 +244,7 @@ export function registerWebhooksResource(mcpServer: McpServer) {
     'woovi://webhook-schemas',
     {
       title: 'Woovi Webhook Schemas',
-      description: 'JSON Schema definitions for Woovi webhook event payloads, including charge, refund, movement, dispute, account register, and Pix Automatic events.',
+      description: 'JSON Schema definitions for Woovi webhook event payloads, with detailed payloads for charge, transaction, and refund events plus the full event catalog for movement, dispute, account register, and Pix Automatic notifications.',
       mimeType: 'application/json',
     },
     async (uri) => {

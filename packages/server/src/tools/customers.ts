@@ -4,26 +4,30 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerZodTool } from '../utils/mcp-registration.js';
 import { createJsonToolHandler } from '../utils/tool-handler.js';
 
+const nonEmptyStringSchema = z.string().trim().min(1);
+const nonNegativeIntegerSchema = z.number().int().nonnegative();
+const positiveIntegerSchema = z.number().int().positive();
+
 const createCustomerInputSchema = z.object({
-  name: z.string().describe('Customer full name'),
-  taxID: z.string()
+  name: nonEmptyStringSchema.describe('Customer full name'),
+  taxID: nonEmptyStringSchema
     .refine(val => /^\d{11}$|^\d{14}$/.test(val), {
       message: 'Invalid CPF or CNPJ format (must be 11 or 14 digits)',
     })
     .optional()
     .describe('Brazilian tax ID (CPF: 11 digits, CNPJ: 14 digits)'),
   email: z.string().email().optional().describe('Customer email address'),
-  phone: z.string().optional().describe('Customer phone number'),
-  correlationID: z.string().optional().describe('Optional external correlation ID for the customer'),
+  phone: nonEmptyStringSchema.optional().describe('Customer phone number'),
+  correlationID: nonEmptyStringSchema.optional().describe('Optional external correlation ID for the customer'),
   address: z.object({
-    zipcode: z.string().optional(),
-    street: z.string().optional(),
-    number: z.string().optional(),
-    complement: z.string().optional(),
-    neighborhood: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    country: z.string().optional(),
+    zipcode: nonEmptyStringSchema.optional(),
+    street: nonEmptyStringSchema.optional(),
+    number: nonEmptyStringSchema.optional(),
+    complement: nonEmptyStringSchema.optional(),
+    neighborhood: nonEmptyStringSchema.optional(),
+    city: nonEmptyStringSchema.optional(),
+    state: nonEmptyStringSchema.optional(),
+    country: nonEmptyStringSchema.optional(),
   }).optional().describe('Optional customer address'),
 }).refine(
   (value) => Boolean(value.taxID || value.email || value.phone),
@@ -32,14 +36,14 @@ const createCustomerInputSchema = z.object({
 type CreateCustomerInput = z.infer<typeof createCustomerInputSchema>;
 
 const getCustomerInputSchema = z.object({
-  customerId: z.string().describe('Customer correlation ID or tax ID'),
+  customerId: nonEmptyStringSchema.describe('Customer correlation ID or tax ID'),
 });
 type GetCustomerInput = z.infer<typeof getCustomerInputSchema>;
 
 const listCustomersInputSchema = z.object({
-  search: z.string().optional().describe('Search by name, email, or taxID'),
-  skip: z.number().optional().describe('Pagination offset (default: 0)'),
-  limit: z.number().optional().describe('Max records to return (default: 10)'),
+  search: nonEmptyStringSchema.optional().describe('Search by name, email, phone, correlationID, or taxID'),
+  skip: nonNegativeIntegerSchema.optional().describe('Pagination offset (default: 0)'),
+  limit: positiveIntegerSchema.optional().describe('Max records to return (default: 10)'),
 });
 type ListCustomersInput = z.infer<typeof listCustomersInputSchema>;
 
@@ -98,7 +102,7 @@ export function registerCustomerTools(mcpServer: McpServer, wooviClient: WooviCl
     mcpServer,
     'list_customers',
     {
-      description: 'List customers with pagination and an optional search string. Pagination uses offset-based skip/limit. Search is applied by this MCP server over the fetched customer page using name, email, phone, correlationID, or taxID.',
+      description: 'List customers with pagination and an optional search string. Pagination uses offset-based skip/limit. Search is applied by this MCP server across paginated upstream customer results using name, email, phone, correlationID, or taxID.',
       inputSchema: listCustomersInputSchema,
     },
     createJsonToolHandler('list_customers', async (args: ListCustomersInput) => {

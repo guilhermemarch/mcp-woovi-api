@@ -8,10 +8,19 @@ const listAccountsOutputSchema = z.object({
   accounts: z.array(z.object({
     accountId: z.string(),
     isDefault: z.boolean().optional(),
+    officialName: z.string().optional(),
+    tradeName: z.string().optional(),
+    branch: z.string().optional(),
+    account: z.string().optional(),
+    accountName: z.string().optional(),
+    taxID: z.string().optional(),
+    taxId: z.string().optional(),
     balance: z.object({
       total: z.number(),
       blocked: z.number(),
       available: z.number(),
+      blockedBySecurity: z.number().optional(),
+      blockedByWithdrawSafety: z.number().optional(),
     }),
   })),
 });

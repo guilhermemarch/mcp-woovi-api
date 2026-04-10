@@ -6,7 +6,7 @@ import { registerZodPrompt } from '../utils/mcp-registration.js';
 const dailySummaryArgsSchema = {
   date: z.string().optional().describe('ISO 8601 date for the summary (defaults to today)'),
   accountId: z.string().optional().describe('Optional account ID for multi-account setups'),
-  limit: z.number().optional().describe('Optional cap for how many recent transactions and charges to inspect'),
+  limit: z.coerce.number().int().positive().optional().describe('Optional cap for how many recent transactions and charges to inspect'),
 };
 
 type DailySummaryPromptArgs = {
@@ -26,7 +26,7 @@ export function registerDailySummaryPrompt(mcpServer: McpServer) {
     },
     async (args: DailySummaryPromptArgs = {}): Promise<GetPromptResult> => {
       const date = args?.date || 'today';
-      const limit = args?.limit || 20;
+      const limit = args?.limit ?? 20;
       const balanceArgs = args?.accountId ? ` with {"accountId":"${args.accountId}"}` : '';
       return {
         messages: [

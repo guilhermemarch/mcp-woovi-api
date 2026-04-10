@@ -176,8 +176,23 @@ export async function startHttpServer(runtime: WooviMcpRuntime = getConfiguredSe
   await runtime.mcpServer.connect(transport as any);
   logger.info('Server connected to HTTP transport');
 
-  return await new Promise<{ close: () => Promise<void> }>((resolve) => {
-    const server = app.listen(runtime.config.port, () => {
+  return await new Promise<{ close: () => Promise<void> }>((resolve, reject) => {
+    const server = app.listen(runtime.config.port);
+
+    server.once('error', (error) => {
+      logger.error('Failed to start HTTP listener', {
+        port: runtime.config.port,
+        error: String(error),
+      });
+      void runtime.mcpServer.close().catch((closeError) => {
+        logger.error('Failed to close MCP server after HTTP startup error', {
+          error: String(closeError),
+        });
+      });
+      reject(error);
+    });
+
+    server.once('listening', () => {
       logger.info('Listening', { port: runtime.config.port });
       resolve({
         close: async () => {
