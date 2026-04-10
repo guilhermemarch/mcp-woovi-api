@@ -235,6 +235,26 @@ describe('WooviClient', () => {
       await expect(result).rejects.toThrow();
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    it('should retry transient fetch failures with backoff', async () => {
+      const client = new WooviClient('test-app-id');
+      mockFetch
+        .mockRejectedValueOnce(new TypeError('fetch failed'))
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ success: true }),
+        });
+
+      const result = client['makeRequest']('GET', '/data');
+      result.catch(() => undefined);
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(result).resolves.toEqual({ success: true });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('Authentication Errors (401/403 handling)', () => {
